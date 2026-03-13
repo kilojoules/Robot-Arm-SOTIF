@@ -46,7 +46,7 @@ class SafetyPredictorCNN:
     def __init__(self, image_size: Tuple[int, int] = (128, 128)):
         _ensure_torch()
         self.image_size = image_size
-        self.model = _SafetyNet()
+        self.model = _make_safety_net()
         self.device = "cpu"
 
     def to(self, device: str):
@@ -102,41 +102,39 @@ class SafetyPredictorCNN:
         logger.info(f"Loaded safety predictor from {path}")
 
 
-class _SafetyNet(_nn.Module if _nn else object):
-    """4-layer CNN for binary safety classification."""
+def _make_safety_net():
+    """Build the SafetyNet nn.Module class after torch is imported."""
+    _ensure_torch()
 
-    def __new__(cls, *args, **kwargs):
-        _ensure_torch()
-        # Rebuild class with proper base if needed
-        if not issubclass(cls, _nn.Module):
-            cls.__bases__ = (_nn.Module,)
-        return super().__new__(cls)
+    class SafetyNet(_nn.Module):
+        """4-layer CNN for binary safety classification."""
 
-    def __init__(self):
-        _ensure_torch()
-        super().__init__()
-        # Conv blocks: 3 -> 32 -> 64 -> 128 -> 256
-        self.features = _nn.Sequential(
-            _nn.Conv2d(3, 32, 3, padding=1), _nn.BatchNorm2d(32), _nn.ReLU(),
-            _nn.MaxPool2d(2),
-            _nn.Conv2d(32, 64, 3, padding=1), _nn.BatchNorm2d(64), _nn.ReLU(),
-            _nn.MaxPool2d(2),
-            _nn.Conv2d(64, 128, 3, padding=1), _nn.BatchNorm2d(128), _nn.ReLU(),
-            _nn.MaxPool2d(2),
-            _nn.Conv2d(128, 256, 3, padding=1), _nn.BatchNorm2d(256), _nn.ReLU(),
-            _nn.AdaptiveAvgPool2d(1),
-        )
-        self.classifier = _nn.Sequential(
-            _nn.Flatten(),
-            _nn.Linear(256, 64),
-            _nn.ReLU(),
-            _nn.Dropout(0.3),
-            _nn.Linear(64, 1),
-            _nn.Sigmoid(),
-        )
+        def __init__(self):
+            super().__init__()
+            # Conv blocks: 3 -> 32 -> 64 -> 128 -> 256
+            self.features = _nn.Sequential(
+                _nn.Conv2d(3, 32, 3, padding=1), _nn.BatchNorm2d(32), _nn.ReLU(),
+                _nn.MaxPool2d(2),
+                _nn.Conv2d(32, 64, 3, padding=1), _nn.BatchNorm2d(64), _nn.ReLU(),
+                _nn.MaxPool2d(2),
+                _nn.Conv2d(64, 128, 3, padding=1), _nn.BatchNorm2d(128), _nn.ReLU(),
+                _nn.MaxPool2d(2),
+                _nn.Conv2d(128, 256, 3, padding=1), _nn.BatchNorm2d(256), _nn.ReLU(),
+                _nn.AdaptiveAvgPool2d(1),
+            )
+            self.classifier = _nn.Sequential(
+                _nn.Flatten(),
+                _nn.Linear(256, 64),
+                _nn.ReLU(),
+                _nn.Dropout(0.3),
+                _nn.Linear(64, 1),
+                _nn.Sigmoid(),
+            )
 
-    def forward(self, x):
-        return self.classifier(self.features(x))
+        def forward(self, x):
+            return self.classifier(self.features(x))
+
+    return SafetyNet()
 
 
 def train_safety_predictor(
