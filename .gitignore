@@ -1,0 +1,33 @@
+# Existing external repos (tracked separately)
+camera_occlusion/
+cnn-occlusion-robustness/
+portfolio/
+
+# Results and data (large binary files)
+results/
+data/
+*.npz
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+*.key
+
+# Pixi
+.pixi/
+pixi.lock
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

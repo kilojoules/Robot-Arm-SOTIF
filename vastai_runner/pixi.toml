@@ -1,0 +1,15 @@
+[workspace]
+authors = ["Julian Quick <juqu@dtu.dk>"]
+channels = ["conda-forge"]
+name = "vastai_runner"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.11.*"
+pip = ">=26.0.1,<27"
+
+[pypi-dependencies]
+vastai = ">=0.5.0, <0.6"
