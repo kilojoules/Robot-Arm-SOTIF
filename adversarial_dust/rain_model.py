@@ -10,6 +10,16 @@ fingerprint + glare, then tested on rain to measure generalization.
 
 import numpy as np
 
+_Rain = None
+
+
+def _get_rain_class():
+    global _Rain
+    if _Rain is None:
+        from camera_occlusion.camera_noise import Rain
+        _Rain = Rain
+    return _Rain
+
 
 # Parameter indices
 _IDX_DENSITY = 0      # drop density scale [0, 1]
@@ -27,9 +37,12 @@ class RainOcclusionModel:
     budget_level controls the maximum number of drops (severity cap).
     """
 
-    def __init__(self, budget_level: float, max_drops: int = 150):
+    def __init__(self, budget_level: float, max_drops: int = 150,
+                 image_shape: tuple = (480, 640)):
         self.budget_level = budget_level
         self.max_drops = max_drops
+        self.image_h = image_shape[0]
+        self.image_w = image_shape[1] if len(image_shape) > 1 else image_shape[0]
         self.n_params = NUM_RAIN_PARAMS
 
         # Param bounds for random sampling / CMA
@@ -65,10 +78,8 @@ class RainOcclusionModel:
 
         Each call generates fresh random drop positions (stateless).
         """
-        from camera_occlusion.camera_noise import Rain
-
         kwargs = self._parse_params(params)
-        rain = Rain(**kwargs)
+        rain = _get_rain_class()(**kwargs)
         return rain.apply(image)
 
     def get_random_params(self, rng: np.random.Generator) -> np.ndarray:
@@ -83,7 +94,7 @@ class RainOcclusionModel:
         kwargs = self._parse_params(params)
         # Return a uniform mask proportional to drop count
         coverage = kwargs["num_drops"] / self.max_drops
-        return np.full((480, 640), coverage, dtype=np.float32)
+        return np.full((self.image_h, self.image_w), coverage, dtype=np.float32)
 
     def get_cma_bounds(self):
         """Return (lower, upper) bound arrays for CMA-ES."""

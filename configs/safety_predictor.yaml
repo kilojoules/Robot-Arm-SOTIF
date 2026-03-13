@@ -1,5 +1,6 @@
 # Safety predictor pipeline config
-# Collects fingerprint+glare training data, trains CNN, evaluates on rain
+# Collects fingerprint+glare training data (random + adversarial params),
+# trains CNN, evaluates on held-out rain + fingerprint holdout.
 env:
   task_name: "google_robot_pick_coke_can"
   policy_model: "internvla-m1"
@@ -7,13 +8,12 @@ env:
   internvla_m1_port: 10093
   internvla_m1_ckpt: "/root/internvla_m1_ckpt/checkpoints/steps_50000_pytorch_model.pt"
 
-# Envelope settings (used by data collection for model creation)
+# Envelope settings (used by make_occlusion_model for data collection)
 envelope:
   occlusion_types:
     - fingerprint
     - glare
   budget_levels:
-    - 0.0
     - 0.10
     - 0.30
     - 0.50

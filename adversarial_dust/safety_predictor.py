@@ -12,7 +12,7 @@ with no knowledge of the occlusion type, budget, or parameters.
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
@@ -21,26 +21,23 @@ logger = logging.getLogger(__name__)
 # Defer torch imports to avoid breaking non-GPU environments
 _torch = None
 _nn = None
-_F = None
 
 
 def _ensure_torch():
-    global _torch, _nn, _F
+    global _torch, _nn
     if _torch is None:
         import torch
         import torch.nn as nn
-        import torch.nn.functional as F
         _torch = torch
         _nn = nn
-        _F = F
 
 
 class SafetyPredictorCNN:
     """Lightweight CNN that predicts P(failure) from a camera image.
 
-    Architecture: 4 conv blocks → global avg pool → 2 FC layers → sigmoid.
+    Architecture: 4 conv blocks -> global avg pool -> 2 FC layers -> logit.
     Input: (B, 3, H, W) normalized image.
-    Output: (B, 1) probability of failure.
+    Output: (B, 1) probability of failure (after sigmoid).
     """
 
     def __init__(self, image_size: Tuple[int, int] = (128, 128)):
@@ -59,12 +56,10 @@ class SafetyPredictorCNN:
         _ensure_torch()
         import cv2
         img = cv2.resize(image, self.image_size)
-        # Normalize to ImageNet stats
         img = img.astype(np.float32) / 255.0
         mean = np.array([0.485, 0.456, 0.406])
         std = np.array([0.229, 0.224, 0.225])
         img = (img - mean) / std
-        # HWC -> CHW
         tensor = _torch.from_numpy(img.transpose(2, 0, 1)).float()
         return tensor
 
@@ -73,7 +68,8 @@ class SafetyPredictorCNN:
         self.model.eval()
         tensor = self.preprocess(image).unsqueeze(0).to(self.device)
         with _torch.no_grad():
-            p_fail = self.model(tensor).item()
+            logit = self.model(tensor)
+            p_fail = _torch.sigmoid(logit).item()
         return p_fail
 
     def predict_batch(self, images: List[np.ndarray]) -> np.ndarray:
@@ -82,7 +78,8 @@ class SafetyPredictorCNN:
         tensors = _torch.stack([self.preprocess(img) for img in images])
         tensors = tensors.to(self.device)
         with _torch.no_grad():
-            p_fail = self.model(tensors).cpu().numpy().flatten()
+            logits = self.model(tensors)
+            p_fail = _torch.sigmoid(logits).cpu().numpy().flatten()
         return p_fail
 
     def save(self, path: str):
@@ -103,15 +100,17 @@ class SafetyPredictorCNN:
 
 
 def _make_safety_net():
-    """Build the SafetyNet nn.Module class after torch is imported."""
+    """Build the SafetyNet nn.Module after torch is imported.
+
+    Output is a raw logit (no sigmoid). Use BCEWithLogitsLoss for training
+    and apply sigmoid at inference time for numerical stability.
+    """
     _ensure_torch()
 
     class SafetyNet(_nn.Module):
-        """4-layer CNN for binary safety classification."""
 
         def __init__(self):
             super().__init__()
-            # Conv blocks: 3 -> 32 -> 64 -> 128 -> 256
             self.features = _nn.Sequential(
                 _nn.Conv2d(3, 32, 3, padding=1), _nn.BatchNorm2d(32), _nn.ReLU(),
                 _nn.MaxPool2d(2),
@@ -128,7 +127,6 @@ def _make_safety_net():
                 _nn.ReLU(),
                 _nn.Dropout(0.3),
                 _nn.Linear(64, 1),
-                _nn.Sigmoid(),
             )
 
         def forward(self, x):
@@ -141,11 +139,12 @@ def train_safety_predictor(
     dataset_path: str,
     output_dir: str,
     image_size: Tuple[int, int] = (128, 128),
-    epochs: int = 30,
+    epochs: int = 50,
     batch_size: int = 32,
     lr: float = 1e-3,
     val_split: float = 0.2,
     device: str = "cuda",
+    frames_per_episode: int = 10,
 ) -> SafetyPredictorCNN:
     """Train the safety predictor on collected episode data.
 
@@ -157,15 +156,16 @@ def train_safety_predictor(
         epochs: Training epochs.
         batch_size: Batch size.
         lr: Learning rate.
-        val_split: Fraction of data for validation.
+        val_split: Fraction of episodes held out for validation.
         device: 'cuda' or 'cpu'.
+        frames_per_episode: Number of consecutive frames per episode in the
+                           dataset (used for episode-level train/val split).
 
     Returns:
         Trained SafetyPredictorCNN.
     """
     _ensure_torch()
-    from torch.utils.data import DataLoader, TensorDataset, random_split
-    import cv2
+    from torch.utils.data import DataLoader, TensorDataset, Subset
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -174,24 +174,52 @@ def train_safety_predictor(
     data = np.load(dataset_path)
     images_raw = data["images"]  # (N, H, W, 3) uint8
     labels = data["labels"].astype(np.float32)  # (N,) binary
+    n_samples = len(labels)
+    n_failures = int(labels.sum())
+    n_success = n_samples - n_failures
 
-    print(f"Dataset: {len(labels)} samples, {labels.sum():.0f} failures "
-          f"({labels.mean():.1%} failure rate)")
+    print(f"Dataset: {n_samples} samples, {n_failures} failures "
+          f"({labels.mean():.1%} failure rate)", flush=True)
 
     # Preprocess all images
     predictor = SafetyPredictorCNN(image_size=image_size)
     tensors = _torch.stack([predictor.preprocess(img) for img in images_raw])
     label_tensor = _torch.from_numpy(labels).float().unsqueeze(1)
 
-    dataset = TensorDataset(tensors, label_tensor)
+    # --- Episode-level train/val split ---
+    # Frames are stored in contiguous blocks of frames_per_episode.
+    # Split by episode to prevent data leakage between correlated frames.
+    n_episodes = n_samples // frames_per_episode
+    rng = np.random.default_rng(42)
+    episode_indices = rng.permutation(n_episodes)
+    n_val_episodes = max(1, int(n_episodes * val_split))
+    val_episodes = set(episode_indices[:n_val_episodes])
 
-    # Train/val split
-    n_val = int(len(dataset) * val_split)
-    n_train = len(dataset) - n_val
-    train_ds, val_ds = random_split(
-        dataset, [n_train, n_val],
-        generator=_torch.Generator().manual_seed(42),
-    )
+    train_idx, val_idx = [], []
+    for ep in range(n_episodes):
+        start = ep * frames_per_episode
+        end = start + frames_per_episode
+        if ep in val_episodes:
+            val_idx.extend(range(start, end))
+        else:
+            train_idx.extend(range(start, end))
+
+    dataset = TensorDataset(tensors, label_tensor)
+    train_ds = Subset(dataset, train_idx)
+    val_ds = Subset(dataset, val_idx)
+    n_train = len(train_idx)
+    n_val = len(val_idx)
+
+    print(f"Split: {n_train} train, {n_val} val "
+          f"({n_val_episodes}/{n_episodes} episodes held out)", flush=True)
+
+    # --- Class-weighted loss to handle imbalance ---
+    if n_failures > 0 and n_success > 0:
+        pos_weight = _torch.tensor([n_success / n_failures]).to(device)
+    else:
+        pos_weight = _torch.tensor([1.0]).to(device)
+    print(f"Class balance: pos_weight={pos_weight.item():.1f} "
+          f"(upweights failures {pos_weight.item():.1f}x)", flush=True)
 
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=batch_size)
@@ -199,7 +227,10 @@ def train_safety_predictor(
     # Training
     predictor.to(device)
     optimizer = _torch.optim.Adam(predictor.model.parameters(), lr=lr)
-    criterion = _nn.BCELoss()
+    scheduler = _torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="min", factor=0.5, patience=5,
+    )
+    criterion = _nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
     history = []
     best_val_loss = float("inf")
@@ -210,8 +241,8 @@ def train_safety_predictor(
         train_loss = 0.0
         for X, y in train_loader:
             X, y = X.to(device), y.to(device)
-            pred = predictor.model(X)
-            loss = criterion(pred, y)
+            logits = predictor.model(X)
+            loss = criterion(logits, y)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -222,21 +253,37 @@ def train_safety_predictor(
         predictor.model.eval()
         val_loss = 0.0
         val_correct = 0
+        val_tp = val_fp = val_fn = val_tn = 0
         with _torch.no_grad():
             for X, y in val_loader:
                 X, y = X.to(device), y.to(device)
-                pred = predictor.model(X)
-                val_loss += criterion(pred, y).item() * len(X)
-                val_correct += ((pred > 0.5) == y).sum().item()
+                logits = predictor.model(X)
+                val_loss += criterion(logits, y).item() * len(X)
+                preds = (_torch.sigmoid(logits) > 0.5).float()
+                val_correct += (preds == y).sum().item()
+                val_tp += ((preds == 1) & (y == 1)).sum().item()
+                val_fp += ((preds == 1) & (y == 0)).sum().item()
+                val_fn += ((preds == 0) & (y == 1)).sum().item()
+                val_tn += ((preds == 0) & (y == 0)).sum().item()
+
         val_loss /= max(n_val, 1)
         val_acc = val_correct / max(n_val, 1)
+        precision = val_tp / max(val_tp + val_fp, 1)
+        recall = val_tp / max(val_tp + val_fn, 1)
+        f1 = 2 * precision * recall / max(precision + recall, 1e-8)
 
         history.append({
             "epoch": epoch,
             "train_loss": train_loss,
             "val_loss": val_loss,
             "val_accuracy": val_acc,
+            "val_precision": precision,
+            "val_recall": recall,
+            "val_f1": f1,
+            "lr": optimizer.param_groups[0]["lr"],
         })
+
+        scheduler.step(val_loss)
 
         if val_loss < best_val_loss:
             best_val_loss = val_loss
@@ -246,7 +293,9 @@ def train_safety_predictor(
             print(f"Epoch {epoch+1}/{epochs}: "
                   f"train_loss={train_loss:.4f}, "
                   f"val_loss={val_loss:.4f}, "
-                  f"val_acc={val_acc:.1%}")
+                  f"val_acc={val_acc:.1%}, "
+                  f"P={precision:.2f} R={recall:.2f} F1={f1:.2f}",
+                  flush=True)
 
     # Save training log
     with open(out / "training_log.json", "w") as f:
@@ -254,6 +303,10 @@ def train_safety_predictor(
 
     # Load best model
     predictor.load(str(out / "best_model.pt"))
-    print(f"Training complete. Best val_loss={best_val_loss:.4f}")
+
+    # Report baseline comparison
+    majority_acc = max(n_failures, n_success) / n_samples
+    print(f"\nTraining complete. Best val_loss={best_val_loss:.4f}", flush=True)
+    print(f"Majority-class baseline accuracy: {majority_acc:.1%}", flush=True)
 
     return predictor
