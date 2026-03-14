@@ -33,14 +33,14 @@ def _ensure_torch():
 
 
 class SafetyPredictorCNN:
-    """Lightweight CNN that predicts P(failure) from a camera image.
+    """CNN that predicts P(failure) from a camera image.
 
-    Architecture: 4 conv blocks -> global avg pool -> 2 FC layers -> logit.
+    Architecture: ResNet-18 (ImageNet-pretrained, frozen) -> 2 FC layers -> logit.
     Input: (B, 3, H, W) normalized image.
     Output: (B, 1) probability of failure (after sigmoid).
     """
 
-    def __init__(self, image_size: Tuple[int, int] = (128, 128)):
+    def __init__(self, image_size: Tuple[int, int] = (224, 224)):
         _ensure_torch()
         self.image_size = image_size
         self.model = _make_safety_net()
@@ -100,45 +100,45 @@ class SafetyPredictorCNN:
 
 
 def _make_safety_net():
-    """Build the SafetyNet nn.Module after torch is imported.
+    """Build a ResNet-18 with frozen ImageNet backbone + trainable head.
 
     Output is a raw logit (no sigmoid). Use BCEWithLogitsLoss for training
     and apply sigmoid at inference time for numerical stability.
+
+    The frozen backbone provides rich visual features (edges, textures,
+    object parts) learned from 1.2M images. Only the classifier head
+    (~33K params) is trained on our small dataset.
     """
     _ensure_torch()
+    from torchvision import models
 
-    class SafetyNet(_nn.Module):
+    class SafetyResNet(_nn.Module):
 
         def __init__(self):
             super().__init__()
-            self.features = _nn.Sequential(
-                _nn.Conv2d(3, 32, 3, padding=1), _nn.BatchNorm2d(32), _nn.ReLU(),
-                _nn.MaxPool2d(2),
-                _nn.Conv2d(32, 64, 3, padding=1), _nn.BatchNorm2d(64), _nn.ReLU(),
-                _nn.MaxPool2d(2),
-                _nn.Conv2d(64, 128, 3, padding=1), _nn.BatchNorm2d(128), _nn.ReLU(),
-                _nn.MaxPool2d(2),
-                _nn.Conv2d(128, 256, 3, padding=1), _nn.BatchNorm2d(256), _nn.ReLU(),
-                _nn.AdaptiveAvgPool2d(1),
-            )
-            self.classifier = _nn.Sequential(
-                _nn.Flatten(),
-                _nn.Linear(256, 64),
+            resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+            # Freeze backbone
+            for param in resnet.parameters():
+                param.requires_grad = False
+            # Replace classifier head (512 -> 1 logit)
+            resnet.fc = _nn.Sequential(
+                _nn.Linear(512, 64),
                 _nn.ReLU(),
                 _nn.Dropout(0.3),
                 _nn.Linear(64, 1),
             )
+            self.resnet = resnet
 
         def forward(self, x):
-            return self.classifier(self.features(x))
+            return self.resnet(x)
 
-    return SafetyNet()
+    return SafetyResNet()
 
 
 def train_safety_predictor(
     dataset_path: str,
     output_dir: str,
-    image_size: Tuple[int, int] = (128, 128),
+    image_size: Tuple[int, int] = (224, 224),
     epochs: int = 50,
     batch_size: int = 32,
     lr: float = 1e-3,
@@ -226,7 +226,12 @@ def train_safety_predictor(
 
     # Training
     predictor.to(device)
-    optimizer = _torch.optim.Adam(predictor.model.parameters(), lr=lr)
+    trainable = [p for p in predictor.model.parameters() if p.requires_grad]
+    n_trainable = sum(p.numel() for p in trainable)
+    n_total = sum(p.numel() for p in predictor.model.parameters())
+    print(f"Parameters: {n_trainable:,} trainable / {n_total:,} total "
+          f"({100*n_trainable/n_total:.1f}%)", flush=True)
+    optimizer = _torch.optim.Adam(trainable, lr=lr)
     scheduler = _torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5,
     )
