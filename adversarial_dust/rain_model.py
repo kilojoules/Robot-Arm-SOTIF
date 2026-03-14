@@ -23,10 +23,10 @@ def _get_rain_class():
 
 # Parameter indices
 _IDX_DENSITY = 0      # drop density scale [0, 1]
-_IDX_RADIUS_MIN = 1   # min radius [3, 15]
-_IDX_RADIUS_MAX = 2   # max radius [10, 25]
+_IDX_RADIUS_MIN = 1   # min radius [5, 25]
+_IDX_RADIUS_MAX = 2   # max radius [15, 50]
 _IDX_MAGNIFICATION = 3  # lens magnification [0.3, 1.5]
-_IDX_BLUR = 4         # blur kernel size [3, 11]
+_IDX_BLUR = 4         # blur kernel size [3, 15]
 NUM_RAIN_PARAMS = 5
 
 
@@ -37,7 +37,7 @@ class RainOcclusionModel:
     budget_level controls the maximum number of drops (severity cap).
     """
 
-    def __init__(self, budget_level: float, max_drops: int = 150,
+    def __init__(self, budget_level: float, max_drops: int = 600,
                  image_shape: tuple = (480, 640)):
         self.budget_level = budget_level
         self.max_drops = max_drops
@@ -46,18 +46,18 @@ class RainOcclusionModel:
         self.n_params = NUM_RAIN_PARAMS
 
         # Param bounds for random sampling / CMA
-        self.lower_bounds = np.array([0.0, 3.0, 10.0, 0.3, 3.0])
-        self.upper_bounds = np.array([1.0, 15.0, 25.0, 1.5, 11.0])
+        self.lower_bounds = np.array([0.0, 5.0, 15.0, 0.3, 3.0])
+        self.upper_bounds = np.array([1.0, 25.0, 50.0, 1.5, 15.0])
 
     def _parse_params(self, params: np.ndarray):
         """Convert flat param vector to Rain constructor kwargs."""
         density = np.clip(params[_IDX_DENSITY], 0.0, 1.0)
         num_drops = max(1, int(density * self.max_drops * self.budget_level))
 
-        radius_min = np.clip(params[_IDX_RADIUS_MIN], 3, 15)
-        radius_max = np.clip(params[_IDX_RADIUS_MAX], radius_min + 2, 25)
+        radius_min = np.clip(params[_IDX_RADIUS_MIN], 5, 25)
+        radius_max = np.clip(params[_IDX_RADIUS_MAX], radius_min + 2, 50)
         magnification = np.clip(params[_IDX_MAGNIFICATION], 0.3, 1.5)
-        blur = int(np.clip(params[_IDX_BLUR], 3, 11))
+        blur = int(np.clip(params[_IDX_BLUR], 3, 15))
         if blur % 2 == 0:
             blur += 1
 
