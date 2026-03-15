@@ -149,7 +149,7 @@ def main():
     print("Generating heavy rain frames...", flush=True)
     rain_frames = []
     for f in clean_frames[:n]:
-        rain = Rain(num_drops=500, radius_range=(8, 35))
+        rain = Rain(num_drops=200, radius_range=(5, 18))
         rain_frames.append(rain.apply(f.copy()))
 
     # --- Apply real glare model ---
@@ -166,7 +166,7 @@ def main():
     columns = [
         ("Fingerprint 90%", fp90_frames, True, "train"),
         ("Glare (heavy)", glare_frames, True, "train"),
-        ("Rain 90%", rain_frames, False, "test"),
+        ("Rain 50%", rain_frames, False, "test"),
     ]
 
     # Layout
