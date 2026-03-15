@@ -5,6 +5,10 @@
 A CNN predicts P(failure) from a single camera frame — trained on fingerprint and glare occlusion, it generalizes to detect failures under raindrop occlusion it has never seen.
 
 <p align="center">
+  <img src="docs/figures/simulation_demo.gif" alt="Robot arm pick-and-place: clean (success) vs fingerprint/glare occlusion (failure)" width="840">
+</p>
+
+<p align="center">
   <img src="docs/figures/generalization_animation.gif" alt="Cross-corruption generalization: v3 from-scratch CNN vs v4 pretrained ResNet-18" width="700">
 </p>
 
