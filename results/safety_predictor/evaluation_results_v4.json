@@ -1,0 +1,866 @@
+{
+  "rain": {
+    "0.1": {
+      "actual_success_rate": 0.9,
+      "mean_predicted_p_failure": 0.03776078489026986,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.02319427952170372,
+          "predicted_p_failure_max": 0.08374522626399994,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.06280005723237991,
+          "predicted_p_failure_max": 0.2134368121623993,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.006877186708152294,
+          "predicted_p_failure_max": 0.031325776129961014,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.18452778458595276,
+          "predicted_p_failure_max": 0.610630452632904,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.009026849642395973,
+          "predicted_p_failure_max": 0.037111856043338776,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0002750282292254269,
+          "predicted_p_failure_max": 0.0006888601346872747,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0844864472746849,
+          "predicted_p_failure_max": 0.48966410756111145,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.002605682471767068,
+          "predicted_p_failure_max": 0.008755166083574295,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0008764456724748015,
+          "predicted_p_failure_max": 0.0024137625005096197,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0029380875639617443,
+          "predicted_p_failure_max": 0.010753240436315536,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.3": {
+      "actual_success_rate": 0.5,
+      "mean_predicted_p_failure": 0.11231988809013274,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.12231552600860596,
+          "predicted_p_failure_max": 0.3205840587615967,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.3125254511833191,
+          "predicted_p_failure_max": 0.6630974411964417,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.015747912228107452,
+          "predicted_p_failure_max": 0.07303353399038315,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.1978635936975479,
+          "predicted_p_failure_max": 0.726794421672821,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.11429458856582642,
+          "predicted_p_failure_max": 0.4181053340435028,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0001842091733124107,
+          "predicted_p_failure_max": 0.0007036699098534882,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.30611756443977356,
+          "predicted_p_failure_max": 0.7239082455635071,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.02182975597679615,
+          "predicted_p_failure_max": 0.08950765430927277,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.008273148909211159,
+          "predicted_p_failure_max": 0.020046720281243324,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.024047130718827248,
+          "predicted_p_failure_max": 0.0505501925945282,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.5": {
+      "actual_success_rate": 0.4,
+      "mean_predicted_p_failure": 0.12309000011300668,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.21075913310050964,
+          "predicted_p_failure_max": 0.5425640940666199,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.2848471403121948,
+          "predicted_p_failure_max": 0.6050763726234436,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.00544720608741045,
+          "predicted_p_failure_max": 0.027781885117292404,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.23576565086841583,
+          "predicted_p_failure_max": 0.5083311796188354,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.05667461082339287,
+          "predicted_p_failure_max": 0.13034024834632874,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0009527005022391677,
+          "predicted_p_failure_max": 0.004305597860366106,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.25327664613723755,
+          "predicted_p_failure_max": 0.5042206645011902,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.011029643006622791,
+          "predicted_p_failure_max": 0.0385688953101635,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.022061850875616074,
+          "predicted_p_failure_max": 0.08094315230846405,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.1500854194164276,
+          "predicted_p_failure_max": 0.2880841791629791,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.7": {
+      "actual_success_rate": 0.2,
+      "mean_predicted_p_failure": 0.1618864191346802,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.2455953061580658,
+          "predicted_p_failure_max": 0.48000842332839966,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.26312321424484253,
+          "predicted_p_failure_max": 0.8181827068328857,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.027163779363036156,
+          "predicted_p_failure_max": 0.06992772966623306,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.25259625911712646,
+          "predicted_p_failure_max": 0.6141253113746643,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.16529512405395508,
+          "predicted_p_failure_max": 0.6159921288490295,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.0015915768453851342,
+          "predicted_p_failure_max": 0.008008984848856926,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.28089064359664917,
+          "predicted_p_failure_max": 0.7879786491394043,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.004343227483332157,
+          "predicted_p_failure_max": 0.014473702758550644,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.04521820694208145,
+          "predicted_p_failure_max": 0.17086565494537354,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.3330468535423279,
+          "predicted_p_failure_max": 0.6568952202796936,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.9": {
+      "actual_success_rate": 0.3,
+      "mean_predicted_p_failure": 0.191698635998182,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.31264883279800415,
+          "predicted_p_failure_max": 0.648451566696167,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.2548750340938568,
+          "predicted_p_failure_max": 0.46280530095100403,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.013915891759097576,
+          "predicted_p_failure_max": 0.060980815440416336,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.4123865067958832,
+          "predicted_p_failure_max": 0.7894731163978577,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.1710333228111267,
+          "predicted_p_failure_max": 0.4939366281032562,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0044833580031991005,
+          "predicted_p_failure_max": 0.020356716588139534,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.1675085425376892,
+          "predicted_p_failure_max": 0.4811623692512512,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.0011110927443951368,
+          "predicted_p_failure_max": 0.002693164860829711,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.10706090927124023,
+          "predicted_p_failure_max": 0.34471166133880615,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.4719628691673279,
+          "predicted_p_failure_max": 0.8303502202033997,
+          "n_frames_scored": 10
+        }
+      ]
+    }
+  },
+  "fingerprint": {
+    "0.1": {
+      "actual_success_rate": 1.0,
+      "mean_predicted_p_failure": 0.0020476293480896856,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.00010931534779956564,
+          "predicted_p_failure_max": 0.00024684236268512905,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0006905453046783805,
+          "predicted_p_failure_max": 0.0045226942747831345,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0018392741912975907,
+          "predicted_p_failure_max": 0.010320430621504784,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.011018339544534683,
+          "predicted_p_failure_max": 0.05208447575569153,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.001100471243262291,
+          "predicted_p_failure_max": 0.0038007297553122044,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.00048206024803221226,
+          "predicted_p_failure_max": 0.002156188478693366,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0009981431066989899,
+          "predicted_p_failure_max": 0.0035765995271503925,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0015691263834014535,
+          "predicted_p_failure_max": 0.004860617686063051,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0021191309206187725,
+          "predicted_p_failure_max": 0.015915537253022194,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0005498871905729175,
+          "predicted_p_failure_max": 0.0008991070790216327,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.3": {
+      "actual_success_rate": 0.8,
+      "mean_predicted_p_failure": 0.1766329502686858,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.031205659732222557,
+          "predicted_p_failure_max": 0.06188083812594414,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.1420428454875946,
+          "predicted_p_failure_max": 0.6859275102615356,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.09616643935441971,
+          "predicted_p_failure_max": 0.525942325592041,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.31553488969802856,
+          "predicted_p_failure_max": 0.5576569437980652,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.19629579782485962,
+          "predicted_p_failure_max": 0.4923548996448517,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.18143098056316376,
+          "predicted_p_failure_max": 0.45684629678726196,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.11537308990955353,
+          "predicted_p_failure_max": 0.4724811613559723,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.13737273216247559,
+          "predicted_p_failure_max": 0.24807874858379364,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.4949339032173157,
+          "predicted_p_failure_max": 0.7080015540122986,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.05597316473722458,
+          "predicted_p_failure_max": 0.40398135781288147,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.5": {
+      "actual_success_rate": 0.6,
+      "mean_predicted_p_failure": 0.38439723700284956,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.0859515517950058,
+          "predicted_p_failure_max": 0.2100069373846054,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.8418086171150208,
+          "predicted_p_failure_max": 0.9768591523170471,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.8073847889900208,
+          "predicted_p_failure_max": 0.8914613127708435,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.43383580446243286,
+          "predicted_p_failure_max": 0.7275753617286682,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.35000863671302795,
+          "predicted_p_failure_max": 0.7308145761489868,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.3161507844924927,
+          "predicted_p_failure_max": 0.8323752880096436,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.1466890424489975,
+          "predicted_p_failure_max": 0.4724811613559723,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.12873277068138123,
+          "predicted_p_failure_max": 0.325690358877182,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.6055612564086914,
+          "predicted_p_failure_max": 0.8753952383995056,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.12784911692142487,
+          "predicted_p_failure_max": 0.5856587886810303,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.7": {
+      "actual_success_rate": 0.6,
+      "mean_predicted_p_failure": 0.3621961135417223,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.050253160297870636,
+          "predicted_p_failure_max": 0.12649211287498474,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.7921327352523804,
+          "predicted_p_failure_max": 0.9768591523170471,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.8165526390075684,
+          "predicted_p_failure_max": 0.9153538346290588,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.5191484093666077,
+          "predicted_p_failure_max": 0.6875664591789246,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.27870672941207886,
+          "predicted_p_failure_max": 0.6974666118621826,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.32709813117980957,
+          "predicted_p_failure_max": 0.5930131077766418,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.06828446686267853,
+          "predicted_p_failure_max": 0.4724811613559723,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.1472267210483551,
+          "predicted_p_failure_max": 0.44666793942451477,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.6068156957626343,
+          "predicted_p_failure_max": 0.8290931582450867,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.01574244722723961,
+          "predicted_p_failure_max": 0.047277260571718216,
+          "n_frames_scored": 10
+        }
+      ]
+    },
+    "0.9": {
+      "actual_success_rate": 0.7,
+      "mean_predicted_p_failure": 0.34516680873930455,
+      "episodes": [
+        {
+          "episode": 0,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.036789726465940475,
+          "predicted_p_failure_max": 0.06817111372947693,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 1,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.8844259977340698,
+          "predicted_p_failure_max": 0.9768591523170471,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 2,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.73401939868927,
+          "predicted_p_failure_max": 0.8552418351173401,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 3,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.30866891145706177,
+          "predicted_p_failure_max": 0.5390938520431519,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 4,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.4320088028907776,
+          "predicted_p_failure_max": 0.9039856195449829,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 5,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.24389731884002686,
+          "predicted_p_failure_max": 0.6569209694862366,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 6,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.07792511582374573,
+          "predicted_p_failure_max": 0.4724811613559723,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 7,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.10108369588851929,
+          "predicted_p_failure_max": 0.23996026813983917,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 8,
+          "actual_success": false,
+          "actual_failure": 1,
+          "predicted_p_failure_mean": 0.5697234869003296,
+          "predicted_p_failure_max": 0.797544002532959,
+          "n_frames_scored": 10
+        },
+        {
+          "episode": 9,
+          "actual_success": true,
+          "actual_failure": 0,
+          "predicted_p_failure_mean": 0.06312563270330429,
+          "predicted_p_failure_max": 0.2489999234676361,
+          "n_frames_scored": 10
+        }
+      ]
+    }
+  }
+}
