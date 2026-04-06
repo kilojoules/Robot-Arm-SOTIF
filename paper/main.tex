@@ -1,0 +1,409 @@
+\documentclass[letterpaper]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{subcaption}
+\usepackage[capitalize]{cleveref}
+
+% Convenience
+\newcommand{\pfail}{P(\text{fail})}
+\newcommand{\rho}{\varrho}
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\etal}{\textit{et al.}}
+
+% TODO marker
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
+\begin{document}
+
+\title{Cross-Corruption Safety Monitoring for Vision-Based\\Robot Manipulation via Adversarial Envelope Analysis}
+
+\author{Julian~Quick%
+\thanks{Manuscript received XX; revised XX. This work was conducted as an independent research project.}%
+\thanks{J.~Quick is with \todo{affiliation}. E-mail: \todo{email}.}%
+\thanks{Digital Object Identifier \todo{DOI}}%
+}
+
+\markboth{IEEE Robotics and Automation Letters, Vol.~XX, No.~XX, Month~2026}%
+{Quick: Cross-Corruption Safety Monitoring for Vision-Based Robot Manipulation}
+
+\maketitle
+
+% ============================================================================
+\begin{abstract}
+Vision-language-action (VLA) policies for robot manipulation are brittle under camera occlusion---fingerprints, glare, and rain can degrade success rates from 100\% to near zero.
+We present a lightweight safety monitor that predicts manipulation failure probability from a single camera frame, \emph{without requiring the occlusion type to have been seen during training}.
+Our approach combines (i)~adversarial worst-case search via CMA-ES to characterize safe operating envelopes across occlusion types and severities, and (ii)~a 33K-parameter CNN head on a frozen ImageNet-pretrained ResNet-18 backbone trained on the resulting labeled episodes.
+The key finding is that frozen ImageNet features encode corruption-agnostic visual degradation signals---contrast loss, blur, brightness shifts---that transfer across physically distinct occlusion mechanisms.
+A systematic leave-one-out analysis across nine corruption types spanning six physical mechanisms --- lens contact (fingerprint, rain), optical (glare, defocus blur), blur (motion blur), sensor noise, atmospheric (fog), illumination (low-light), and digital (JPEG compression) --- demonstrates that the monitor achieves \todo{mean $\rho$ = X.XX $\pm$ X.XX} on held-out corruption types it has never encountered.
+We additionally characterize how generalization improves with training corruption diversity and identify which corruption categories are easiest and hardest to predict out-of-distribution.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Safety monitoring, camera occlusion, vision-language-action models, SOTIF, adversarial testing, transfer learning, robot manipulation.
+\end{IEEEkeywords}
+
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Vision-language-action (VLA) models such as InternVLA~\cite{internvla}, Octo~\cite{octo}, and RT-2~\cite{rt2} have demonstrated impressive manipulation capabilities, but their reliance on camera observations makes them vulnerable to perceptual degradation.
+Recent benchmarking~\cite{liberoplus} reveals that common camera corruptions---fingerprints, glare, rain---can collapse VLA success rates from over 90\% to below 10\%, even at moderate severity levels.
+
+This fragility is a core concern of the Safety of the Intended Functionality (SOTIF, ISO~21448~\cite{iso21448}) standard, which addresses failures arising not from hardware faults but from limitations of perception and decision-making under real-world conditions.
+Camera occlusion is a canonical SOTIF triggering condition for vision-based systems: it is ubiquitous in deployment (warehouse dust, outdoor rain, operator fingerprints on lenses) yet difficult to anticipate exhaustively.
+
+A practical safety monitor must therefore satisfy two requirements: (1)~it must detect when occlusion severity is likely to cause policy failure, and (2)~it must generalize to occlusion types \emph{not encountered during training}, since enumerating all possible degradation modes is infeasible.
+
+We address both requirements with a two-stage approach.
+First, we use adversarial optimization via CMA-ES~\cite{cmaes} to systematically find worst-case occlusion parameters at each severity (budget) level, producing a \emph{safe operating envelope} that maps occlusion coverage to certified success rates (\cref{sec:envelope}).
+Second, we train a lightweight CNN safety monitor on the resulting labeled episodes and evaluate its ability to generalize to held-out corruption types (\cref{sec:safety_predictor}).
+
+Our key finding is that a frozen ImageNet-pretrained ResNet-18 backbone, paired with a small trainable head (33K parameters), learns corruption-agnostic failure signals that transfer across physically distinct occlusion mechanisms.
+Trained on fingerprint and glare corruptions, the monitor achieves strong rank correlation with failure probability under rain occlusion it has never seen.
+
+\noindent\textbf{Contributions:}
+\begin{enumerate}
+    \item A systematic leave-one-out evaluation across nine corruption types spanning six physical mechanisms, demonstrating corruption-agnostic failure detection.
+    \item A lightweight cross-corruption safety monitor (33K trainable parameters) that generalizes to unseen occlusion types via frozen pretrained features.
+    \item A corruption diversity curve showing how many training corruption types suffice for effective OOD generalization.
+    \item An adversarial envelope analysis framework using CMA-ES to characterize worst-case policy performance under parametric occlusion.
+\end{enumerate}
+
+% ============================================================================
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Robustness of Vision-Based Manipulation Policies}
+
+Recent work has exposed the fragility of learned manipulation policies under visual corruptions.
+LIBERO-Plus~\cite{liberoplus} systematically benchmarks VLA robustness, finding dramatic performance drops under ImageNet-C-style corruptions.
+RobustVLA~\cite{robustvla} proposes robustness-aware reinforcement learning post-training to harden policies.
+FPC-VLA~\cite{fpcvla} combines failure prediction with corrective actions.
+CRT~\cite{crt} restores corrupted visual inputs before feeding them to VLA policies.
+These approaches either make the policy more robust or restore corrupted inputs; our work is complementary---we build an external safety monitor that detects when the policy is likely to fail, regardless of whether the policy or input has been hardened.
+
+\subsection{Runtime Safety Monitoring}
+
+Sentinel~\cite{sentinel} monitors generative manipulation policies at runtime by detecting behavioral anomalies at the policy output level.
+Ma~\etal~\cite{ma2024} predict failure from camera faults using multimodal features with 4000 real-world samples.
+FORTRESS~\cite{fortress} addresses real-time out-of-distribution failure prevention.
+Our approach differs in monitoring at the \emph{perceptual input level} and demonstrating zero-shot generalization to unseen corruption types---a property not evaluated in prior work.
+
+\subsection{Adversarial Testing for Safety}
+
+Adversarial testing has been used to find failure modes in autonomous driving~\cite{adv_driving} and manipulation~\cite{adv_manip}.
+CMA-ES is well-suited for this setting as it is derivative-free, handles moderate-dimensional parameter spaces efficiently, and naturally parallelizes across population members.
+We extend adversarial testing to produce certified safe operating envelopes parameterized by occlusion severity.
+
+\subsection{SOTIF and Safety Standards}
+
+ISO~21448~\cite{iso21448} defines a framework for analyzing safety of the intended functionality, distinguishing known/unknown safe and unsafe scenarios.
+Our envelope analysis maps directly to SOTIF's scenario classification: adversarially tested conditions become ``known unsafe,'' while cross-corruption generalization moves previously ``unknown unsafe'' scenarios toward ``known'' status.
+\todo{Expand SOTIF mapping in discussion.}
+
+% ============================================================================
+\section{Problem Formulation}
+\label{sec:problem}
+
+Consider a vision-based manipulation policy $\pi$ that maps camera observations $o_t \in \mathbb{R}^{H \times W \times 3}$ to actions $a_t$.
+An occlusion model $\mathcal{O}_\theta: \mathbb{R}^{H \times W \times 3} \to \mathbb{R}^{H \times W \times 3}$ parameterized by $\theta \in \Theta$ degrades the observation at each timestep: $\tilde{o}_t = \mathcal{O}_\theta(o_t, t)$.
+A budget function $b(\theta) \in [0, 1]$ measures the fraction of pixels significantly affected by the occlusion.
+
+\noindent\textbf{Safe Operating Envelope.}
+For a given occlusion type $\mathcal{O}$ and budget level $\beta$, we seek the worst-case success rate:
+\begin{equation}
+    \text{SR}^*(\mathcal{O}, \beta) = \min_{\theta : b(\theta) \leq \beta} \; \mathbb{E}\left[\text{success}(\pi, \mathcal{O}_\theta)\right]
+\label{eq:envelope}
+\end{equation}
+The safe operating envelope is the set of $(\mathcal{O}, \beta)$ pairs where $\text{SR}^*(\mathcal{O}, \beta) \geq \tau_{\text{safe}}$.
+
+\noindent\textbf{Safety Monitor.}
+We train a monitor $f_\phi: \mathbb{R}^{H \times W \times 3} \to [0, 1]$ that maps a single (potentially occluded) frame to a predicted failure probability $\hat{p} = f_\phi(\tilde{o}_t)$.
+The monitor is trained on corruption types $\mathcal{O}_{\text{train}}$ and evaluated on held-out types $\mathcal{O}_{\text{test}}$ to assess cross-corruption generalization.
+
+% ============================================================================
+\section{Parametric Occlusion Models}
+\label{sec:occlusion}
+
+We organize visual corruptions by physical mechanism following the taxonomy of Hendrycks \& Dietterich~\cite{hendrycks2019}, adapted for fixed-mount robot cameras.
+Our set spans six categories to support systematic cross-corruption generalization analysis.
+All corruptions are applied as image-space post-processing on rendered camera frames and are parameterized with a budget level $\beta \in [0, 1]$ controlling severity.
+
+\cref{tab:corruptions} summarizes the nine corruption types used in our experiments.
+
+\begin{table}[t]
+\centering
+\caption{Corruption taxonomy organized by physical mechanism.}
+\label{tab:corruptions}
+\footnotesize
+\begin{tabular}{llrl}
+\toprule
+\textbf{Category} & \textbf{Corruption} & \textbf{Params} & \textbf{Source} \\
+\midrule
+Lens contact  & Fingerprint smudge & 24 & Gu~\etal~\cite{gu2009} \\
+Lens contact  & Rain drops         &  5 & \cite{camera_occlusion} \\
+Optical       & Glare / lens flare &  6 & Physically-inspired \\
+Optical       & Defocus blur       &  1 & ImageNet-C~\cite{hendrycks2019} \\
+Blur          & Motion blur        &  2 & ImageNet-C~\cite{hendrycks2019} \\
+Sensor        & Gaussian noise     &  2 & ImageNet-C~\cite{hendrycks2019} \\
+Atmospheric   & Fog / haze         &  2 & ImageNet-C~\cite{hendrycks2019} \\
+Illumination  & Low-light          &  2 & LIBERO-Plus~\cite{liberoplus} \\
+Digital       & JPEG compression   &  1 & ImageNet-C~\cite{hendrycks2019} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Physics-Based Models}
+
+\noindent\textbf{Fingerprint smudge.}
+Based on the thin-film optics model of Gu~\etal~\cite{gu2009}, we simulate oil-film residue from finger contact.
+Each fingerprint is parameterized by center, angle, scale, ridge frequency, amplitude, opacity, and smear angle (8 parameters per print).
+The rendering pipeline generates a whorl-pattern ridge mask, applies defocus blur, and composites via attenuation and veiling glare.
+
+\noindent\textbf{Glare / lens flare.}
+We model lens flare as diffraction spikes, haze, chromatic aberration, and lens ghosts.
+Compositing uses screen blending: $I_{\text{out}} = 1 - (1 - I_{\text{base}})(1 - I_{\text{flare}})$.
+
+\noindent\textbf{Rain drops.}
+Refraction-based raindrop model~\cite{camera_occlusion} parameterized by drop density, radius range, magnification, and blur.
+
+\subsection{Standard Corruption Models}
+
+Following ImageNet-C~\cite{hendrycks2019} and LIBERO-Plus~\cite{liberoplus}, we include:
+\textbf{Gaussian noise} (additive sensor read noise),
+\textbf{JPEG compression} (block artifacts at controllable quality),
+\textbf{motion blur} (directional kernel with variable angle and size),
+\textbf{defocus blur} (Gaussian blur with variable sigma),
+\textbf{fog} (uniform alpha blend with white), and
+\textbf{low-light} (gamma darkening with amplified sensor read noise, simulating reduced photon count).
+
+\subsection{Budget Constraint}
+
+All models enforce a budget level $\beta$ controlling corruption severity.
+For spatially-localized models (fingerprint, rain), budget is the fraction of pixels above a dirty threshold, enforced via binary search.
+For global models (fog, low-light, blur), budget linearly scales the corruption intensity parameter.
+This enables fair comparison across corruption types at matched severity levels.
+
+\todo{Add figure showing all nine corruption types at matched budget levels.}
+
+% ============================================================================
+\section{Adversarial Envelope Analysis}
+\label{sec:envelope}
+
+\subsection{CMA-ES Optimization}
+
+We use the Covariance Matrix Adaptation Evolution Strategy (CMA-ES)~\cite{cmaes} to solve \cref{eq:envelope} for each occlusion type and budget level.
+CMA-ES is well-suited because: (i)~occlusion application is non-differentiable, (ii)~the parameter space is moderate-dimensional (6--24 dimensions), and (iii)~population-based evaluation naturally parallelizes across simulation instances.
+
+At each generation, CMA-ES proposes a population of candidate occlusion parameters $\{\theta_1, \ldots, \theta_\lambda\}$.
+Each candidate is evaluated by running $N$ episodes with the occluded policy and computing the success rate.
+The fitness (negative success rate) is reported back to CMA-ES, which updates its search distribution.
+After convergence, the best candidate undergoes a final evaluation with $N_{\text{final}} = 25$ episodes.
+
+\subsection{Budget Projection}
+
+To ensure fair comparison across budget levels, all occlusion models implement a budget projection step.
+Given a target budget $\beta$, we perform binary search over a global scale factor that modulates occlusion intensity until the pixel coverage constraint $b(\theta) \leq \beta$ is satisfied.
+This decouples the spatial structure of the occlusion (optimized by CMA-ES) from its intensity (set by the budget).
+
+\subsection{Envelope Classification}
+
+We classify each $(\mathcal{O}, \beta)$ condition into zones:
+\begin{itemize}
+    \item \textbf{Safe}: $\text{SR}^*(\mathcal{O}, \beta) \geq 0.95$
+    \item \textbf{Marginal}: $0.70 \leq \text{SR}^*(\mathcal{O}, \beta) < 0.95$
+    \item \textbf{Unsafe}: $\text{SR}^*(\mathcal{O}, \beta) < 0.70$
+\end{itemize}
+The \emph{maximum safe budget} is the largest $\beta$ for which the condition remains safe.
+The \emph{breakdown budget} is the smallest $\beta$ at which the condition becomes unsafe.
+
+\todo{Add envelope results table and figure.}
+
+% ============================================================================
+\section{Cross-Corruption Safety Monitor}
+\label{sec:safety_predictor}
+
+\subsection{Architecture}
+
+Our safety monitor uses a ResNet-18~\cite{resnet} backbone pretrained on ImageNet~\cite{imagenet}, with all backbone parameters frozen.
+A lightweight classification head maps the 512-dimensional feature vector to a scalar failure logit:
+\begin{equation}
+    f_\phi(o) = \sigma\!\left(W_2 \cdot \text{ReLU}(W_1 \cdot g(o) + b_1) + b_2\right)
+\end{equation}
+where $g(\cdot)$ denotes the frozen ResNet-18 feature extractor, $W_1 \in \mathbb{R}^{64 \times 512}$, $W_2 \in \mathbb{R}^{1 \times 64}$, and $\sigma$ is the sigmoid function.
+Dropout ($p = 0.3$) is applied after the ReLU.
+The head contains approximately 33K trainable parameters.
+
+\subsection{Training}
+
+\noindent\textbf{Data collection.}
+For each training corruption type (fingerprint, glare) and budget level $\beta \in \{0.1, 0.3, 0.5, 0.7, 0.9\}$, we collect episodes with both random and adversarially optimized occlusion parameters.
+Each episode yields sampled frames labeled with the episode outcome (success/failure).
+
+\noindent\textbf{Loss function.}
+We use binary cross-entropy with logits and class weighting to handle imbalanced data:
+\begin{equation}
+    \mathcal{L} = -\frac{1}{N}\sum_{i=1}^{N} \left[w_+ y_i \log \hat{p}_i + (1 - y_i) \log (1 - \hat{p}_i)\right]
+\end{equation}
+where $w_+ = n_{\text{success}} / n_{\text{failure}}$ upweights the minority failure class.
+
+\noindent\textbf{Episode-level splitting.}
+To prevent data leakage from temporally correlated frames within the same episode, we split at the episode level: all frames from a given episode appear exclusively in either the training or validation set ($80/20$ split).
+
+\noindent\textbf{Optimization.}
+Adam optimizer with learning rate $10^{-3}$, batch size 32, for 50 epochs with ReduceLROnPlateau scheduling.
+
+\subsection{Leave-One-Out Cross-Corruption Protocol}
+\label{sec:loo}
+
+To systematically evaluate cross-corruption generalization, we employ a leave-one-out (LOO) protocol over all nine corruption types.
+In each fold $k$, one corruption type $\mathcal{O}_k$ is held out.
+The safety monitor is trained on episodes collected from the remaining eight types and evaluated on the held-out type.
+
+For each held-out type and budget level, we run $N$ evaluation episodes and compute:
+\begin{itemize}
+    \item The Spearman rank correlation $\rho$ between budget level and mean predicted $\hat{p}_{\text{fail}}$ (severity ranking quality).
+    \item The episode-level AUROC for binary failure prediction (discriminative power).
+    \item The Expected Calibration Error (ECE) from reliability diagrams.
+\end{itemize}
+Bootstrapped 95\% confidence intervals (1000 resamples) are reported for all metrics.
+
+\noindent\textbf{Corruption diversity curve.}
+We additionally vary the training set size $|\mathcal{O}_{\text{train}}| \in \{2, 4, 6, 8\}$ by randomly sampling subsets and evaluating on the remaining types.
+This reveals how many corruption types are needed for effective generalization.
+
+% ============================================================================
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+
+\noindent\textbf{Simulation.}
+We use SimplerEnv~\cite{simplerenv} built on SAPIEN/ManiSkill2 for policy evaluation.
+Corruptions are applied as post-processing on rendered camera frames at each simulation step.
+Object positions are randomized at each episode reset.
+
+\noindent\textbf{Policy.}
+InternVLA-M1~\cite{internvla}, a vision-language-action model, serves as the manipulation policy.
+On the \texttt{google\_robot\_pick\_coke\_can} task, it achieves 100\% success rate (50/50 episodes) under clean conditions.
+
+\noindent\textbf{Data collection.}
+For each of the nine corruption types (\cref{tab:corruptions}) at budget levels $\beta \in \{0.1, 0.3, 0.5, 0.7, 0.9\}$, we collect 10 episodes with random occlusion parameters, yielding ${\sim}450$ episodes total.
+Each episode contributes sampled frames labeled with the episode outcome (success/failure).
+This shared dataset is partitioned differently for each LOO fold, making the CNN training cost negligible (33K parameters, ${\sim}$2 minutes per fold).
+
+\subsection{Motivating Experiment}
+
+In preliminary experiments, we trained the safety monitor on only fingerprint and glare corruptions and evaluated on held-out rain.
+A from-scratch CNN achieved $\rho = -0.62$ (anti-correlated), while the frozen ResNet-18 backbone achieved $\rho = 0.90$ ($p = 0.037$).
+This surprising result --- a 152-percentage-point improvement from pretrained features alone --- motivated the systematic LOO analysis that follows.
+
+\subsection{Leave-One-Out Results}
+
+\begin{table}[t]
+\centering
+\caption{Leave-one-out cross-corruption generalization. Each row holds out one corruption type; the monitor is trained on the other eight. Higher $\rho$ and AUROC indicate better OOD generalization.}
+\label{tab:loo}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Category} & \textbf{Held-out} & \textbf{$\rho$} & \textbf{95\% CI} & \textbf{AUROC} \\
+\midrule
+Lens contact  & Fingerprint & \todo{} & \todo{} & \todo{} \\
+Lens contact  & Rain        & \todo{} & \todo{} & \todo{} \\
+Optical       & Glare       & \todo{} & \todo{} & \todo{} \\
+Optical       & Defocus     & \todo{} & \todo{} & \todo{} \\
+Blur          & Motion blur & \todo{} & \todo{} & \todo{} \\
+Sensor        & Gauss.\ noise & \todo{} & \todo{} & \todo{} \\
+Atmospheric   & Fog         & \todo{} & \todo{} & \todo{} \\
+Illumination  & Low-light   & \todo{} & \todo{} & \todo{} \\
+Digital       & JPEG        & \todo{} & \todo{} & \todo{} \\
+\midrule
+\multicolumn{2}{l}{\textbf{Mean $\pm$ std}} & \todo{} & --- & \todo{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\todo{Fill in LOO results table from experiments. Discuss which corruption types are hardest/easiest to generalize to and why.}
+
+\subsection{Corruption Diversity Curve}
+
+\todo{Plot mean held-out $\rho$ vs.\ number of training corruption types $\{2, 4, 6, 8\}$ with error bars from random subsets. Discuss saturation point --- how many types are needed for effective generalization?}
+
+\subsection{Safe Operating Envelope Results}
+
+\todo{Insert envelope results table. Include adversarial vs.\ random SR, zone classifications, max safe budget, breakdown budget.}
+
+\subsection{Ablation Studies}
+
+\todo{%
+Ablations:
+\begin{itemize}
+    \item Frozen vs.\ fine-tuned vs.\ from-scratch backbone
+    \item ResNet-18 vs.\ ResNet-50 vs.\ ViT-B/16 backbone
+    \item Training data size (learning curve)
+\end{itemize}
+}
+
+\subsection{Baseline Comparisons}
+
+\todo{%
+Compare against BRISQUE, NIQE, pixel coverage, and autoencoder baselines using same LOO evaluation protocol.
+}
+
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Why Cross-Corruption Transfer Works}
+
+We hypothesize that the frozen ImageNet backbone encodes generic visual quality features---edge sharpness, contrast, texture coherence---that degrade similarly under physically distinct occlusion mechanisms.
+Fingerprints attenuate contrast and add low-frequency smearing; glare saturates highlights and reduces dynamic range; rain introduces local blur and magnification.
+All three reduce the information content available to the downstream policy, and the pretrained features capture this reduction without being specific to any corruption type.
+
+\todo{Support with GradCAM visualization showing what the CNN attends to under each corruption type.}
+
+\subsection{Practical Deployment Considerations}
+
+The safety monitor runs inference on a single frame in under \todo{X}ms on a consumer GPU, making it suitable for real-time deployment alongside the manipulation policy.
+The envelope analysis provides deployment-time guidance: operators can specify acceptable risk thresholds and the system reports the maximum occlusion coverage that remains within the certified safe zone.
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item \textbf{Simulation only.} All experiments are conducted in simulation. Real-world camera occlusions may differ in appearance and statistics. \todo{Add real-world pilot results.}
+    \item \textbf{Task scope.} We evaluate on pick-and-place tasks; generalization to contact-rich or long-horizon tasks is untested. \todo{Add additional tasks.}
+    \item \textbf{Occlusion diversity.} Three corruption types may not span the full space of real-world degradation modes.
+    \item \textbf{Calibration.} We evaluate ranking (Spearman $\rho$) but not probability calibration. \todo{Add ECE analysis.}
+\end{itemize}
+
+\subsection{Connection to SOTIF}
+
+\todo{Map our framework formally to ISO 21448 scenario classification: known safe, known unsafe, unknown safe, unknown unsafe. Show how adversarial testing converts ``unknown unsafe'' to ``known unsafe'' and how cross-corruption generalization addresses ``unknown'' scenarios.}
+
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented a framework for safety monitoring of vision-based manipulation under camera occlusion, combining adversarial envelope analysis with a lightweight cross-corruption safety predictor.
+The central finding is that frozen ImageNet features enable a 33K-parameter CNN head to predict failure under occlusion types never encountered during training, suggesting that practical safety monitors need not enumerate every possible degradation mode.
+Adversarial CMA-ES search provides certified worst-case bounds, while the cross-corruption monitor provides real-time per-frame risk assessment.
+\todo{Update conclusion with final results.}
+
+% ============================================================================
+\section*{Acknowledgments}
+\todo{Acknowledgments.}
+
+% ============================================================================
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

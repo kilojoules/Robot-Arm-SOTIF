@@ -35,15 +35,31 @@ def _ensure_torch():
 class SafetyPredictorCNN:
     """CNN that predicts P(failure) from a camera image.
 
-    Architecture: ResNet-18 (ImageNet-pretrained, frozen) -> 2 FC layers -> logit.
+    Architecture: backbone (frozen or fine-tuned) -> FC layers -> logit.
     Input: (B, 3, H, W) normalized image.
     Output: (B, 1) probability of failure (after sigmoid).
     """
 
-    def __init__(self, image_size: Tuple[int, int] = (224, 224)):
+    def __init__(
+        self,
+        image_size: Tuple[int, int] = (224, 224),
+        backbone: str = "resnet18",
+        freeze_backbone: bool = True,
+        head_hidden: int = 64,
+        dropout: float = 0.3,
+    ):
         _ensure_torch()
         self.image_size = image_size
-        self.model = _make_safety_net()
+        self.backbone = backbone
+        self.freeze_backbone = freeze_backbone
+        self.head_hidden = head_hidden
+        self.dropout = dropout
+        self.model = _make_safety_net(
+            backbone=backbone,
+            freeze_backbone=freeze_backbone,
+            head_hidden=head_hidden,
+            dropout=dropout,
+        )
         self.device = "cpu"
 
     def to(self, device: str):
@@ -87,6 +103,10 @@ class SafetyPredictorCNN:
         _torch.save({
             "model_state": self.model.state_dict(),
             "image_size": self.image_size,
+            "backbone": self.backbone,
+            "freeze_backbone": self.freeze_backbone,
+            "head_hidden": self.head_hidden,
+            "dropout": self.dropout,
         }, path)
         logger.info(f"Saved safety predictor to {path}")
 
@@ -94,45 +114,80 @@ class SafetyPredictorCNN:
         _ensure_torch()
         ckpt = _torch.load(path, map_location=self.device, weights_only=True)
         self.image_size = ckpt["image_size"]
+        # Rebuild model if architecture params are in checkpoint
+        if "backbone" in ckpt:
+            self.backbone = ckpt["backbone"]
+            self.freeze_backbone = ckpt.get("freeze_backbone", True)
+            self.head_hidden = ckpt.get("head_hidden", 64)
+            self.dropout = ckpt.get("dropout", 0.3)
+            self.model = _make_safety_net(
+                backbone=self.backbone,
+                freeze_backbone=self.freeze_backbone,
+                head_hidden=self.head_hidden,
+                dropout=self.dropout,
+            )
         self.model.load_state_dict(ckpt["model_state"])
         self.model = self.model.to(self.device)
         logger.info(f"Loaded safety predictor from {path}")
 
 
-def _make_safety_net():
-    """Build a ResNet-18 with frozen ImageNet backbone + trainable head.
+def _make_safety_net(
+    backbone: str = "resnet18",
+    freeze_backbone: bool = True,
+    head_hidden: int = 64,
+    dropout: float = 0.3,
+):
+    """Build a pretrained backbone + trainable classification head.
 
     Output is a raw logit (no sigmoid). Use BCEWithLogitsLoss for training
     and apply sigmoid at inference time for numerical stability.
 
-    The frozen backbone provides rich visual features (edges, textures,
-    object parts) learned from 1.2M images. Only the classifier head
-    (~33K params) is trained on our small dataset.
+    Args:
+        backbone: One of "resnet18", "resnet50", "vit_b_16".
+        freeze_backbone: If True, freeze all backbone weights.
+        head_hidden: Hidden layer size in classification head.
+        dropout: Dropout rate in classification head.
     """
     _ensure_torch()
     from torchvision import models
 
-    class SafetyResNet(_nn.Module):
+    class SafetyNet(_nn.Module):
 
         def __init__(self):
             super().__init__()
-            resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-            # Freeze backbone
-            for param in resnet.parameters():
-                param.requires_grad = False
-            # Replace classifier head (512 -> 1 logit)
-            resnet.fc = _nn.Sequential(
-                _nn.Linear(512, 64),
+
+            if backbone == "resnet18":
+                base = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+                feat_dim = base.fc.in_features  # 512
+                base.fc = _nn.Identity()
+            elif backbone == "resnet50":
+                base = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+                feat_dim = base.fc.in_features  # 2048
+                base.fc = _nn.Identity()
+            elif backbone == "vit_b_16":
+                base = models.vit_b_16(weights=models.ViT_B_16_Weights.IMAGENET1K_V1)
+                feat_dim = base.heads.head.in_features  # 768
+                base.heads = _nn.Identity()
+            else:
+                raise ValueError(f"Unknown backbone: {backbone}")
+
+            if freeze_backbone:
+                for param in base.parameters():
+                    param.requires_grad = False
+
+            self.backbone = base
+            self.head = _nn.Sequential(
+                _nn.Linear(feat_dim, head_hidden),
                 _nn.ReLU(),
-                _nn.Dropout(0.3),
-                _nn.Linear(64, 1),
+                _nn.Dropout(dropout),
+                _nn.Linear(head_hidden, 1),
             )
-            self.resnet = resnet
 
         def forward(self, x):
-            return self.resnet(x)
+            features = self.backbone(x)
+            return self.head(features)
 
-    return SafetyResNet()
+    return SafetyNet()
 
 
 def train_safety_predictor(
@@ -145,6 +200,13 @@ def train_safety_predictor(
     val_split: float = 0.2,
     device: str = "cuda",
     frames_per_episode: int = 10,
+    backbone: str = "resnet18",
+    freeze_backbone: bool = True,
+    head_hidden: int = 64,
+    dropout: float = 0.3,
+    backbone_lr: float = None,
+    seed: int = 42,
+    data_fraction: float = 1.0,
 ) -> SafetyPredictorCNN:
     """Train the safety predictor on collected episode data.
 
@@ -155,17 +217,29 @@ def train_safety_predictor(
         image_size: Resize images to this before feeding to CNN.
         epochs: Training epochs.
         batch_size: Batch size.
-        lr: Learning rate.
+        lr: Learning rate for head (and backbone if backbone_lr is None).
         val_split: Fraction of episodes held out for validation.
         device: 'cuda' or 'cpu'.
         frames_per_episode: Number of consecutive frames per episode in the
                            dataset (used for episode-level train/val split).
+        backbone: Backbone architecture ("resnet18", "resnet50", "vit_b_16").
+        freeze_backbone: If True, freeze backbone weights.
+        head_hidden: Hidden layer size in classification head.
+        dropout: Dropout rate in classification head.
+        backbone_lr: Separate learning rate for backbone when unfrozen.
+                     Defaults to lr/10 if None and backbone is unfrozen.
+        seed: Random seed for reproducibility.
+        data_fraction: Fraction of training data to use (for learning curve ablation).
 
     Returns:
         Trained SafetyPredictorCNN.
     """
     _ensure_torch()
     from torch.utils.data import DataLoader, TensorDataset, Subset
+
+    # Set seeds for reproducibility
+    _torch.manual_seed(seed)
+    np.random.seed(seed)
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -180,9 +254,17 @@ def train_safety_predictor(
 
     print(f"Dataset: {n_samples} samples, {n_failures} failures "
           f"({labels.mean():.1%} failure rate)", flush=True)
+    print(f"Architecture: {backbone} (freeze={freeze_backbone}), "
+          f"head_hidden={head_hidden}, dropout={dropout}", flush=True)
 
     # Preprocess all images
-    predictor = SafetyPredictorCNN(image_size=image_size)
+    predictor = SafetyPredictorCNN(
+        image_size=image_size,
+        backbone=backbone,
+        freeze_backbone=freeze_backbone,
+        head_hidden=head_hidden,
+        dropout=dropout,
+    )
     tensors = _torch.stack([predictor.preprocess(img) for img in images_raw])
     label_tensor = _torch.from_numpy(labels).float().unsqueeze(1)
 
@@ -190,7 +272,7 @@ def train_safety_predictor(
     # Frames are stored in contiguous blocks of frames_per_episode.
     # Split by episode to prevent data leakage between correlated frames.
     n_episodes = n_samples // frames_per_episode
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed)
     episode_indices = rng.permutation(n_episodes)
     n_val_episodes = max(1, int(n_episodes * val_split))
     val_episodes = set(episode_indices[:n_val_episodes])
@@ -203,6 +285,13 @@ def train_safety_predictor(
             val_idx.extend(range(start, end))
         else:
             train_idx.extend(range(start, end))
+
+    # --- Data fraction subsampling (for learning curve ablation) ---
+    if data_fraction < 1.0:
+        n_keep = max(1, int(len(train_idx) * data_fraction))
+        train_idx = list(rng.choice(train_idx, size=n_keep, replace=False))
+        print(f"Data fraction: using {n_keep}/{len(train_idx) + n_keep - n_keep} "
+              f"training samples ({data_fraction:.0%})", flush=True)
 
     dataset = TensorDataset(tensors, label_tensor)
     train_ds = Subset(dataset, train_idx)
@@ -226,12 +315,25 @@ def train_safety_predictor(
 
     # Training
     predictor.to(device)
-    trainable = [p for p in predictor.model.parameters() if p.requires_grad]
-    n_trainable = sum(p.numel() for p in trainable)
     n_total = sum(p.numel() for p in predictor.model.parameters())
+
+    if freeze_backbone:
+        trainable = [p for p in predictor.model.parameters() if p.requires_grad]
+        n_trainable = sum(p.numel() for p in trainable)
+        optimizer = _torch.optim.Adam(trainable, lr=lr)
+    else:
+        # Separate param groups: lower LR for backbone, full LR for head
+        bb_lr = backbone_lr if backbone_lr is not None else lr / 10.0
+        param_groups = [
+            {"params": predictor.model.backbone.parameters(), "lr": bb_lr},
+            {"params": predictor.model.head.parameters(), "lr": lr},
+        ]
+        n_trainable = n_total
+        optimizer = _torch.optim.Adam(param_groups)
+        print(f"Backbone LR: {bb_lr:.1e}, Head LR: {lr:.1e}", flush=True)
+
     print(f"Parameters: {n_trainable:,} trainable / {n_total:,} total "
           f"({100*n_trainable/n_total:.1f}%)", flush=True)
-    optimizer = _torch.optim.Adam(trainable, lr=lr)
     scheduler = _torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode="min", factor=0.5, patience=5,
     )

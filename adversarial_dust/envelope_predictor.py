@@ -22,7 +22,8 @@ from adversarial_dust.dust_model import AdversarialDustModel
 from adversarial_dust.blob_model import DynamicBlobDustModel
 from adversarial_dust.fingerprint_model import FingerprintSmudgeModel
 from adversarial_dust.glare_model import AdversarialGlareModel
-from adversarial_dust.evaluator import PolicyEvaluator
+from adversarial_dust.evaluator import PolicyEvaluator  # ABC
+from adversarial_dust.simpler_env_evaluator import SimplerEnvEvaluator
 from adversarial_dust.optimizer import AdversarialDustOptimizer
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,34 @@ def make_occlusion_model(
         return DynamicBlobDustModel(config.blob, image_shape, budget_level)
     elif occlusion_type == "grid":
         return AdversarialDustModel(config.dust, image_shape, budget_level)
+    elif occlusion_type == "lens_contamination":
+        from adversarial_dust.isaac_sim.lens_contamination_model import (
+            LensContaminationModel,
+        )
+        return LensContaminationModel(
+            config.lens_contamination, image_shape, budget_level
+        )
+    elif occlusion_type == "rain":
+        from adversarial_dust.rain_model import RainOcclusionModel
+        return RainOcclusionModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "gaussian_noise":
+        from adversarial_dust.digital_corruption import GaussianNoiseModel
+        return GaussianNoiseModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "jpeg":
+        from adversarial_dust.digital_corruption import JPEGCompressionModel
+        return JPEGCompressionModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "motion_blur":
+        from adversarial_dust.digital_corruption import MotionBlurModel
+        return MotionBlurModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "defocus_blur":
+        from adversarial_dust.digital_corruption import DefocusBlurModel
+        return DefocusBlurModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "fog":
+        from adversarial_dust.digital_corruption import FogModel
+        return FogModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "low_light":
+        from adversarial_dust.digital_corruption import LowLightModel
+        return LowLightModel(budget_level=budget_level, image_shape=image_shape)
     else:
         raise ValueError(f"Unknown occlusion type: {occlusion_type}")
 
@@ -124,7 +153,7 @@ class SafeOperatingEnvelopePredictor:
         model = AdversarialDustModel(
             self.config.dust, self.image_shape, budget_level=0.0
         )
-        evaluator = PolicyEvaluator(self.config.env, self.policy, model)
+        evaluator = SimplerEnvEvaluator(self.config.env, self.policy, model)
         return evaluator.evaluate(
             dust_params=None,
             n_episodes=self.config.envelope.episodes_final_eval,
@@ -139,7 +168,7 @@ class SafeOperatingEnvelopePredictor:
         model = make_occlusion_model(
             occlusion_type, self.config, self.image_shape, budget_level
         )
-        evaluator = PolicyEvaluator(self.config.env, self.policy, model)
+        evaluator = SimplerEnvEvaluator(self.config.env, self.policy, model)
         opt_config = self._make_opt_config()
 
         budget_dir = self.output_dir / occlusion_type / f"budget_{budget_level:.2f}"

@@ -1,0 +1,72 @@
+{
+  "n_folds": 9,
+  "per_fold": [
+    {
+      "held_out": "fingerprint",
+      "spearman_rho": 0.9746794344808963,
+      "ci_lower": 0.7453559924999299,
+      "ci_upper": 1.0,
+      "auroc": 0.7714285714285715
+    },
+    {
+      "held_out": "glare",
+      "spearman_rho": NaN,
+      "ci_lower": NaN,
+      "ci_upper": NaN,
+      "auroc": NaN
+    },
+    {
+      "held_out": "rain",
+      "spearman_rho": 0.9746794344808963,
+      "ci_lower": 0.7453559924999299,
+      "ci_upper": 1.0,
+      "auroc": 0.930756843800322
+    },
+    {
+      "held_out": "gaussian_noise",
+      "spearman_rho": NaN,
+      "ci_lower": NaN,
+      "ci_upper": NaN,
+      "auroc": NaN
+    },
+    {
+      "held_out": "jpeg",
+      "spearman_rho": -0.7071067811865475,
+      "ci_lower": -1.0,
+      "ci_upper": -0.7071067811865475,
+      "auroc": 0.5918367346938775
+    },
+    {
+      "held_out": "motion_blur",
+      "spearman_rho": 0.8944271909999159,
+      "ci_lower": 0.7254762501100117,
+      "ci_upper": 1.0,
+      "auroc": 0.9432624113475176
+    },
+    {
+      "held_out": "defocus_blur",
+      "spearman_rho": 0.8660254037844386,
+      "ci_lower": 0.7254762501100117,
+      "ci_upper": 1.0,
+      "auroc": 0.9293478260869565
+    },
+    {
+      "held_out": "fog",
+      "spearman_rho": NaN,
+      "ci_lower": NaN,
+      "ci_upper": NaN,
+      "auroc": NaN
+    },
+    {
+      "held_out": "low_light",
+      "spearman_rho": 0.7071067811865475,
+      "ci_lower": 0.7071067811865475,
+      "ci_upper": 1.0,
+      "auroc": 1.0
+    }
+  ],
+  "mean_rho": 0.6183019106243578,
+  "std_rho": 0.5994742813373525,
+  "mean_auroc": 0.8611053978928741,
+  "std_auroc": 0.13910271053121698
+}

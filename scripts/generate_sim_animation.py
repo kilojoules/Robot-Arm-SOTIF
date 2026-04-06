@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
-"""Generate simulation GIF showing pick_coke_can episodes with success/failure flash.
+"""Generate simulation GIF from REAL episodes (policy sees occluded images).
 
-Layout: 3 columns showing episodes under different occlusion types.
-  Column 1: Fingerprint — robot succeeds, green flash at lift
-  Column 2: Glare — robot succeeds, green flash at lift
-  Column 3: Rain (heavy, never seen) — robot fails, red flash at timeout
+Records actual manipulation episodes under different corruption types.
+The policy receives corrupted frames and its behavior reflects the
+corruption — honest visualization with no post-hoc overlays.
 
-Section headers separate "TRAINED ON" vs "TESTED ON".
-Green border pulses when the can is lifted. Red border pulses on failure.
+Requires GPU + InternVLA-M1 server running.
+
+Usage (on GPU machine):
+    python scripts/generate_sim_animation.py --config configs/safety_predictor.yaml
+
+Layout: N columns, one per corruption type.
+Green border on success, red border on failure.
 """
 
-import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "camera_occlusion"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from PIL import Image, ImageDraw, ImageFont
-from camera_occlusion.camera_noise import Rain, Glare
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS = ROOT / "results"
 OUT = ROOT / "docs" / "figures"
-
-# Success happens around frame 40-50 out of 100 (can lifted off table)
-LIFT_FRAME_FRAC = 0.45
 
 
 def get_font(size=15):
@@ -42,16 +39,6 @@ def get_font(size=15):
             continue
     return ImageFont.load_default()
 
-
-def extract_frames(video_path, fps=5):
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cmd = ["ffmpeg", "-y", "-i", str(video_path),
-               "-vf", f"fps={fps}", f"{tmpdir}/f_%04d.png"]
-        subprocess.run(cmd, capture_output=True, check=True)
-        frames = []
-        for p in sorted(Path(tmpdir).glob("f_*.png")):
-            frames.append(np.array(Image.open(p).convert("RGB")))
-    return frames
 
 
 def crop_resize(img_np, crop_top=30, size=(220, 176)):
@@ -119,126 +106,141 @@ def make_header(width, text, bg_color, height=26):
     return header
 
 
+def record_real_episode(config, policy, image_shape, occlusion_type, budget):
+    """Record a real episode where the policy sees corrupted frames."""
+    from adversarial_dust.envelope_predictor import make_occlusion_model
+    from adversarial_dust.simpler_env_evaluator import SimplerEnvEvaluator
+
+    model = make_occlusion_model(occlusion_type, config, image_shape, budget)
+    evaluator = SimplerEnvEvaluator(config.env, policy, model)
+    rng = np.random.default_rng(42)
+    params = model.get_random_params(rng)
+    success, clean_frames, dirty_frames = evaluator.run_episode(params, record=True)
+    return success, dirty_frames
+
+
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Generate simulation demo GIF from real episodes")
+    parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--corruptions", type=str, nargs="+",
+                        default=["fingerprint", "glare", "rain"],
+                        help="Corruption types to show")
+    parser.add_argument("--budget", type=float, default=0.7,
+                        help="Budget level for corruptions")
+    parser.add_argument("--sections", type=str, nargs="+", default=None,
+                        help="Section labels per corruption (train/test)")
+    cli_args = parser.parse_args()
+
+    from adversarial_dust.config import load_envelope_config
+    from adversarial_dust.run_envelope import create_policy, get_image_shape
+
+    config = load_envelope_config(cli_args.config)
+    image_shape = get_image_shape(config)
+    policy = create_policy(config)
+
     OUT.mkdir(parents=True, exist_ok=True)
     output = OUT / "simulation_demo.gif"
 
     pw, ph = 220, 176
     gap = 3
     header_h = 26
-    border_t = 5  # border thickness
+    border_t = 5
 
-    # --- Load source frames ---
-    print("Extracting frames...", flush=True)
-    fps = 5
+    # Default section assignment: first two are "train", rest are "test"
+    sections = cli_args.sections
+    if sections is None:
+        sections = ["train"] * min(2, len(cli_args.corruptions))
+        sections += ["test"] * (len(cli_args.corruptions) - len(sections))
 
-    clean_frames = extract_frames(
-        RESULTS / "coke_can_fingerprint" / "animations" / "clean.mp4", fps=fps)
-    fp90_frames = extract_frames(
-        RESULTS / "coke_can_fingerprint" / "animations" /
-        "worst_fingerprint_budget_0.90.mp4", fps=fps)
-    glare90_frames = extract_frames(
-        RESULTS / "coke_can_glare" / "animations" /
-        "worst_glare_budget_0.90.mp4", fps=fps)
+    # --- Record REAL episodes ---
+    columns = []
+    for i, occ_type in enumerate(cli_args.corruptions):
+        print(f"Recording real episode: {occ_type} @ budget={cli_args.budget}",
+              flush=True)
+        success, frames = record_real_episode(
+            config, policy, image_shape, occ_type, cli_args.budget)
+        label = f"{occ_type.replace('_', ' ').title()} {cli_args.budget:.0%}"
+        section = sections[i] if i < len(sections) else "test"
+        columns.append((label, frames, success, section))
+        print(f"  {occ_type}: {'SUCCESS' if success else 'FAIL'}, "
+              f"{len(frames)} frames", flush=True)
 
-    n = min(len(clean_frames), len(fp90_frames), len(glare90_frames))
-    lift_frame = int(n * LIFT_FRAME_FRAC)
-    print(f"  {n} frames, lift at frame {lift_frame}", flush=True)
-
-    # --- Generate rain (heavy, causes failure) ---
-    print("Generating heavy rain frames...", flush=True)
-    rain_frames = []
-    for f in clean_frames[:n]:
-        rain = Rain(num_drops=200, radius_range=(5, 18))
-        rain_frames.append(rain.apply(f.copy()))
-
-    # --- Apply real glare model ---
-    print("Applying glare model...", flush=True)
-    glare_frames = []
-    for f in clean_frames[:n]:
-        g = Glare(intensity=0.9, num_streaks=6, ghost_count=4,
-                  streak_length_factor=2.0, chromatic_aberration=1.8,
-                  manual_source=(350, 220))
-        glare_frames.append(g.apply(f.copy()))
-
-    # --- Column definitions ---
-    # (label, frames, success, section)
-    columns = [
-        ("Fingerprint 90%", fp90_frames, True, "train"),
-        ("Glare (heavy)", glare_frames, True, "train"),
-        ("Rain 50%", rain_frames, False, "test"),
-    ]
-
-    # Layout
+    # Layout — dynamic number of columns
+    n_cols = len(columns)
     col_total_w = pw + border_t * 2
-    total_w = col_total_w * 3 + gap * 2
+    total_w = col_total_w * n_cols + gap * (n_cols - 1)
     panel_total_h = ph + border_t * 2
 
-    train_header = make_header(
-        col_total_w * 2 + gap, "TRAINED ON", "#2e7d32", header_h)
-    test_header = make_header(
-        col_total_w, "TESTED ON (never seen)", "#1565c0", header_h)
+    n_train = sum(1 for _, _, _, s in columns if s == "train")
+    n_test = n_cols - n_train
+    train_w = col_total_w * n_train + gap * max(0, n_train - 1)
+    test_w = col_total_w * n_test + gap * max(0, n_test - 1)
+    train_header = make_header(train_w, "TRAINED ON", "#2e7d32", header_h) \
+        if n_train > 0 else None
+    test_header = make_header(test_w, "TESTED ON (never seen)", "#1565c0",
+                               header_h) if n_test > 0 else None
     total_h = header_h + panel_total_h
 
-    # --- Build frames ---
-    print("Compositing...", flush=True)
+    # Subsample frames to keep GIF reasonable
+    n = min(len(f) for _, f, _, _ in columns)
+    stride = max(1, n // 50)
+    frame_indices = list(range(0, n, stride))
+
+    print(f"Compositing {len(frame_indices)} frames from {n} total...",
+          flush=True)
 
     GREEN = (46, 125, 50)
     RED = (198, 40, 40)
     GRAY = (55, 71, 79)
 
     combined = []
-    for i in range(n):
+    for fi, i in enumerate(frame_indices):
         frame = Image.new("RGB", (total_w, total_h), "#1a1a2e")
 
-        # Headers
-        frame.paste(train_header, (0, 0))
-        frame.paste(test_header, (col_total_w * 2 + gap * 2, 0))
+        # Paste headers
+        if train_header:
+            frame.paste(train_header, (0, 0))
+        if test_header:
+            test_x = (col_total_w + gap) * n_train
+            frame.paste(test_header, (test_x, 0))
+
+        frac = fi / max(len(frame_indices) - 1, 1)
 
         for col_idx, (label, src_frames, success, section) in enumerate(columns):
-            panel = crop_resize(src_frames[i], size=(pw, ph))
+            src_i = min(i, len(src_frames) - 1)
+            panel = crop_resize(src_frames[src_i], size=(pw, ph))
 
-            # Determine border state
-            if success:
-                if i >= lift_frame:
-                    # Pulsing green — sinusoidal intensity
-                    phase = (i - lift_frame) / 4.0
-                    pulse = 0.5 + 0.5 * np.sin(phase * np.pi * 2)
-                    alpha = 0.4 + 0.6 * pulse
-                    border_color = GREEN
-                    # Add "PICKED UP" label at lift moment
-                    if i == lift_frame:
-                        pass  # label added below
-                    add_label(panel, "PICKED UP", font_size=13,
-                              position="top-right", bg_color="#1b5e20",
-                              text_color="white")
-                else:
-                    border_color = GRAY
-                    alpha = 0.3
+            # Border color based on actual episode outcome
+            if success and frac >= 0.45:
+                phase = (frac - 0.45) / 0.1
+                pulse = 0.5 + 0.5 * np.sin(phase * np.pi * 2)
+                alpha = 0.4 + 0.6 * pulse
+                border_color = GREEN
+                add_label(panel, "SUCCESS", font_size=13,
+                          position="top-right", bg_color="#1b5e20",
+                          text_color="white")
+            elif not success and frac >= 0.85:
+                phase = (frac - 0.85) / 0.1
+                pulse = 0.5 + 0.5 * np.sin(phase * np.pi * 2)
+                alpha = 0.5 + 0.5 * pulse
+                border_color = RED
+                add_label(panel, "FAILED", font_size=13,
+                          position="top-right", bg_color="#b71c1c",
+                          text_color="white")
+            elif not success and frac >= 0.6:
+                border_color = (255, 152, 0)
+                alpha = 0.4
             else:
-                if i >= n - 5:
-                    # Pulsing red at the end — failure
-                    phase = (i - (n - 5)) / 2.0
-                    pulse = 0.5 + 0.5 * np.sin(phase * np.pi * 2)
-                    alpha = 0.5 + 0.5 * pulse
-                    border_color = RED
-                    add_label(panel, "FAILED", font_size=13,
-                              position="top-right", bg_color="#b71c1c",
-                              text_color="white")
-                elif i >= n * 0.7:
-                    # Amber warning zone
-                    border_color = (255, 152, 0)
-                    alpha = 0.4
-                else:
-                    border_color = GRAY
-                    alpha = 0.3
+                border_color = GRAY
+                alpha = 0.3
 
-            # Occlusion type label at bottom
             sec_color = "#2e7d32" if section == "train" else "#1565c0"
             add_label(panel, label, font_size=11,
                       position="bottom-center", bg_color=sec_color)
 
-            # Draw glowing border
             bordered = draw_glow_border(panel, border_color,
                                         thickness=border_t, alpha=alpha)
 
@@ -247,7 +249,7 @@ def main():
 
         combined.append(frame)
 
-    # Add a few held frames at the end for the loop
+    # Hold last frame
     for _ in range(8):
         combined.append(combined[-1])
 

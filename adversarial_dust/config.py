@@ -40,6 +40,7 @@ class EnvConfig:
     max_episode_steps: int = 80
     control_freq: Optional[int] = None
     sim_freq: Optional[int] = None
+    sim_backend: str = "simpler_env"  # "simpler_env" | "isaac_sim"
     # InternVLA-M1 server settings (only used when policy_model starts with "internvla-m1")
     internvla_m1_port: int = 10093
     internvla_m1_ckpt: str = ""
@@ -134,6 +135,67 @@ class EnvelopeConfig:
     marginal_threshold: float = 0.70
 
 
+# ---------------------------------------------------------------------------
+# Isaac Sim configs
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class IsaacSimConfig:
+    """Configuration for Isaac Sim GPU-accelerated evaluation backend."""
+
+    num_envs: int = 1
+    renderer: str = "ray_traced"  # "ray_traced" | "path_traced"
+    lens_model: str = "pinhole"  # "pinhole" | "fisheye"
+    gpu_id: int = 0
+    headless: bool = True
+    physics_dt: float = 1.0 / 120.0
+    rendering_dt: float = 1.0 / 30.0
+    usd_scene_path: Optional[str] = None
+    camera_prim_path: str = "/World/Camera"
+    robot_prim_path: str = "/World/Robot"
+    shader_occlusion: bool = True  # Warp kernels vs CPU post-process fallback
+
+
+@dataclass
+class CalibrationConfig:
+    """Configuration for sim-to-real calibration pipeline."""
+
+    reference_data_path: Optional[str] = None
+    fitting_method: str = "polynomial"  # "polynomial" | "neural"
+    fitting_degree: int = 3
+    fitting_iterations: int = 1000
+    fitting_lr: float = 0.01
+    validation_split: float = 0.2
+
+
+@dataclass
+class LensContaminationConfig:
+    """Configuration for shader-based lens contamination model (Isaac Sim)."""
+
+    num_regions: int = 5
+    max_roughness: float = 0.8
+    dirty_threshold: float = 0.05
+    radius_range: Tuple[float, float] = (0.02, 0.25)
+    opacity_range: Tuple[float, float] = (0.0, 1.0)
+
+
+@dataclass
+class SafetyPredictorConfig:
+    """Configuration for the CNN safety predictor architecture and training."""
+
+    backbone: str = "resnet18"  # "resnet18" | "resnet50" | "vit_b_16"
+    freeze_backbone: bool = True
+    head_hidden: int = 64
+    dropout: float = 0.3
+    image_size: Tuple[int, int] = (224, 224)
+    epochs: int = 50
+    batch_size: int = 32
+    lr: float = 1e-3
+    backbone_lr: Optional[float] = None  # separate LR for backbone when unfrozen
+    val_split: float = 0.2
+
+
 @dataclass
 class EnvelopeExperimentConfig:
     """Top-level config for safe operating envelope experiments."""
@@ -148,6 +210,14 @@ class EnvelopeExperimentConfig:
         policy_model="internvla-m1",
         max_episode_steps=200,
     ))
+    isaac_sim: Optional[IsaacSimConfig] = None
+    calibration: Optional[CalibrationConfig] = None
+    lens_contamination: LensContaminationConfig = field(
+        default_factory=LensContaminationConfig
+    )
+    safety_predictor: SafetyPredictorConfig = field(
+        default_factory=SafetyPredictorConfig
+    )
     output_dir: str = "results/envelope"
 
 

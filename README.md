@@ -1,110 +1,140 @@
 # Robot-Arm-SOTIF
 
-**Visual safety monitor for robot manipulation under camera occlusion.**
+**A 33K-parameter visual safety monitor that predicts robot manipulation failure under camera corruption -- and generalizes to corruption types never seen in training.**
 
-A CNN predicts P(failure) from a single camera frame — trained on fingerprint and glare occlusion, it generalizes to detect failures under raindrop occlusion it has never seen.
+[Paper (RA-L, in preparation)]() | [Results](results/loo_analysis/loo_summary.json)
 
-<p align="center">
-  <img src="docs/figures/simulation_demo.gif" alt="Robot arm pick-and-place: clean (success) vs fingerprint/glare occlusion (failure)" width="840">
-</p>
-
-<p align="center">
-  <img src="docs/figures/generalization_animation.gif" alt="Cross-corruption generalization: v3 from-scratch CNN vs v4 pretrained ResNet-18" width="700">
-</p>
+---
 
 ## Key Result
 
-A pretrained ResNet-18 backbone (frozen ImageNet features + 33K trainable head) achieves **statistically significant cross-corruption generalization** — trained only on fingerprint/glare, it correctly ranks rain severity by failure probability.
-
-| Metric | CNN from Scratch | ResNet-18 Pretrained |
-|--------|:---:|:---:|
-| Rain Spearman *ρ* (held-out) | -0.62 | **0.90** (*p* = 0.037) |
-| Fingerprint Spearman *ρ* (train) | 0.67 | **0.98** (*p* = 0.005) |
+A frozen ResNet-18 backbone trained on 8 camera corruption types accurately predicts policy failure on the held-out 9th type. Leave-one-out cross-validation across 9 corruption types spanning 6 physical mechanisms:
 
 <p align="center">
-  <img src="docs/figures/evaluation_summary.png" alt="Evaluation: fingerprint (training) and rain (held-out)" width="800">
+  <img src="docs/figures/loo_results.png" alt="LOO cross-corruption generalization results" width="900">
 </p>
 
-## How It Works
+Of the 5 corruption types that cause policy failures, the monitor achieves **mean Spearman rho = 0.883 +/- 0.098** for severity ranking and **mean AUROC = 0.915 +/- 0.076** for episode-level failure detection. 4 corruption types are policy-robust (InternVLA-M1 does not fail even at 90% corruption budget).
 
-**Adversarial CMA-ES** finds worst-case occlusion patterns for each corruption type and budget level. A VLM policy ([InternVLA-M1](https://github.com/OpenGVLab/InternVLA)) executes pick-and-place tasks in simulation ([SimplerEnv](https://github.com/simpler-env/SimplerEnv) / SAPIEN) while the camera image is degraded. The safety predictor is trained on (image, success/failure) pairs from these episodes.
+| Held-out Type | Category | Spearman rho | p-value | AUROC |
+|---|---|:---:|:---:|:---:|
+| Fingerprint | Lens contact | **0.975** | 0.005 | 0.771 |
+| Rain | Lens contact | **0.975** | 0.005 | 0.931 |
+| Motion blur | Blur | **0.894** | 0.041 | 0.943 |
+| Defocus blur | Optical | **0.866** | 0.058 | 0.929 |
+| Low-light | Illumination | **0.707** | 0.182 | 1.000 |
 
-```
-CMA-ES adversarial search       Camera occlusion models       VLM policy (InternVLA-M1)
-  finds worst-case params   -->   fingerprint / glare / rain  -->  pick_coke_can task
-                                         |                              |
-                                    occluded frame               success / failure
-                                         |                              |
-                                         v                              v
-                                  SafetyNet CNN  ------>  P(failure) vs ground truth
-```
+## Corruption Taxonomy
+
+9 corruption types organized by physical mechanism, following [ImageNet-C](https://arxiv.org/abs/1903.12261) adapted for fixed-mount robot cameras:
+
+<p align="center">
+  <img src="docs/figures/corruption_grid.png" alt="9 corruption types at 70% budget" width="900">
+</p>
+
+| Category | Corruption | Params | Source |
+|---|---|:---:|---|
+| Lens contact | Fingerprint smudge | 24 | Gu et al., SIGGRAPH Asia 2009 |
+| Lens contact | Rain drops | 5 | camera_occlusion |
+| Optical | Glare / lens flare | 6 | Physically-inspired |
+| Optical | Defocus blur | 1 | ImageNet-C |
+| Blur | Motion blur | 2 | ImageNet-C |
+| Sensor | Gaussian noise | 2 | ImageNet-C |
+| Atmospheric | Fog / haze | 2 | ImageNet-C |
+| Illumination | Low-light | 2 | LIBERO-Plus |
+| Digital | JPEG compression | 1 | ImageNet-C |
+
+## Per-Fold Analysis
+
+Predicted failure probability tracks actual failure rate across occlusion budgets for all 5 failure-inducing corruption types:
+
+<p align="center">
+  <img src="docs/figures/loo_per_fold.png" alt="Per-fold budget vs prediction" width="900">
+</p>
+
+## Feature-Space Similarity
+
+Pairwise cosine similarity between corruption types in frozen ResNet-18 feature space:
+
+<p align="center">
+  <img src="docs/figures/feature_similarity.png" alt="Feature similarity heatmap" width="800">
+</p>
+
+## Architecture
 
 <p align="center">
   <img src="docs/figures/architecture.png" alt="SafetyNet architecture" width="700">
 </p>
 
-The frozen ResNet-18 backbone provides rich visual features (edges, textures, object structure) learned from 1.2M ImageNet images. Only the classifier head is trained on our ~550 episode samples, avoiding overfitting while enabling corruption-agnostic failure detection.
+Frozen ResNet-18 backbone (ImageNet-pretrained, 11M params frozen) + trainable classification head (33K params): `512 -> FC(64) -> ReLU -> Dropout(0.3) -> FC(1) -> sigmoid`. Trained with class-weighted BCE loss and episode-level train/val split.
 
-## Project Structure
+## Method
 
-```
-adversarial_dust/
-  config.py              # YAML config loading
-  evaluator.py           # Policy evaluation with occlusion
-  optimizer.py           # CMA-ES adversarial optimization
-  envelope_predictor.py  # Safe operating envelope classification
-  safety_predictor.py    # ResNet-18 CNN: image -> P(failure)
-  collect_training_data.py  # Episode data collection pipeline
-  run_safety_predictor.py   # Full train/eval orchestration
-  rain_model.py          # Raindrop occlusion (refraction-based)
+1. **Adversarial CMA-ES** finds worst-case occlusion patterns for each corruption type and budget level
+2. **VLM policy** ([InternVLA-M1](https://github.com/OpenGVLab/InternVLA)) executes pick-and-place tasks in simulation ([SimplerEnv](https://github.com/simpler-env/SimplerEnv) / SAPIEN)
+3. **Safety predictor** is trained on (image, success/failure) pairs from these episodes
+4. **Leave-one-out evaluation**: train on 8 corruption types, evaluate on the held-out 9th
 
-configs/
-  safety_predictor.yaml  # Pipeline configuration
+## Reproducing Results
 
-scripts/
-  setup_nvvulkan.sh      # Vast.ai GPU setup (Vulkan + CUDA + deps)
-  generate_readme_figures.py  # Regenerate figures from results JSON
+### Requirements
 
-tests/
-  test_safety_predictor.py  # CNN unit tests
-```
+- GPU machine with CUDA (experiments run on [vast.ai](https://vast.ai) RTX 4090 instances)
+- [pixi](https://pixi.sh) for local dependency management
 
-## Running the Pipeline
+### Full LOO pipeline (GPU required)
 
-### GPU Setup (Vast.ai)
+<details>
+<summary>GPU setup and execution</summary>
 
 ```bash
-# From vastai_runner/ directory
-pixi run vastai create instance <OFFER_ID> \
-  --image nvidia/vulkan:1.3-470 --disk 80 --ssh --direct \
-  --onstart-cmd "bash -c 'curl -sL https://raw.githubusercontent.com/kilojoules/Robot-Arm-SOTIF/main/scripts/setup_nvvulkan.sh -o /root/setup_nvvulkan.sh && bash /root/setup_nvvulkan.sh > /root/setup.log 2>&1'"
-```
+# On vast.ai with nvidia/vulkan:1.3-470 image:
+bash scripts/setup_nvvulkan.sh
 
-### Full Pipeline
-
-```bash
-# On GPU machine after setup
+# Start InternVLA-M1 server
 cd /root/InternVLA-M1
 PYTHONPATH=/root/InternVLA-M1 python deployment/model_server/server_policy_M1.py \
   --ckpt_path /root/internvla_m1_ckpt/checkpoints/steps_50000_pytorch_model.pt \
   --port 10093 --use_bf16 &
+sleep 60
 
+# Run LOO analysis
 cd /root/project
 PYTHONPATH=/root/InternVLA-M1:/root/project:/root/camera_occlusion \
   python -u adversarial_dust/run_safety_predictor.py \
-  --config configs/safety_predictor.yaml
+  --config configs/safety_predictor.yaml \
+  --loo \
+  --loo-types fingerprint glare rain gaussian_noise jpeg \
+             motion_blur defocus_blur fog low_light \
+  --eval-episodes 10 \
+  --episodes-per-condition 10 \
+  --output-dir results/loo_analysis
 ```
+</details>
 
-The pipeline runs three stages:
-1. **Collect** — fingerprint + glare episodes (random + adversarial params)
-2. **Train** — ResNet-18 with frozen backbone, class-weighted BCE loss, episode-level split
-3. **Evaluate** — rain (held-out generalization) + fingerprint (sanity check)
+### Generate figures locally
+
+```bash
+pixi run python scripts/generate_paper_figures.py \
+  --results-dir results/loo_analysis \
+  --output-dir docs/figures
+```
 
 ## SOTIF Context
 
-[SOTIF (ISO 21448)](https://www.iso.org/standard/77490.html) addresses safety of the intended functionality — failures that arise not from hardware faults, but from limitations of perception and decision-making under real-world conditions. Camera occlusion (fingerprints, glare, rain) is a canonical SOTIF trigger.
+[SOTIF (ISO 21448)](https://www.iso.org/standard/77490.html) addresses safety of the intended functionality -- failures that arise not from hardware faults, but from limitations of perception and decision-making under real-world conditions. Camera corruption is a canonical SOTIF triggering condition.
 
-This project demonstrates that a lightweight visual safety monitor can:
-- Detect degraded perception **before** the policy fails
-- **Generalize across corruption types** using pretrained visual features
-- Be trained with only ~550 samples by leveraging transfer learning
+This project demonstrates that a lightweight visual safety monitor can detect degraded perception and **generalize across corruption types** using pretrained visual features, reducing the need for corruption-specific safety validation.
+
+## Citation
+
+```bibtex
+@article{quick2026crosscorruption,
+  title={Cross-Corruption Safety Monitoring for Vision-Based Robot Manipulation
+         via Adversarial Envelope Analysis},
+  author={Quick, Julian},
+  journal={IEEE Robotics and Automation Letters},
+  year={2026},
+  note={In preparation}
+}
+```
