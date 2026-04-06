@@ -448,7 +448,7 @@ def main():
     parser.add_argument("--loo-types", type=str, nargs="+",
                         default=["fingerprint", "glare", "rain",
                                  "gaussian_noise", "jpeg", "motion_blur",
-                                 "defocus_blur", "fog", "low_light"],
+                                 "defocus_blur", "dust_camera", "low_light"],
                         help="Corruption types for LOO analysis")
 
     # Stage control

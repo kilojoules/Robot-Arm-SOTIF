@@ -34,7 +34,7 @@ import numpy as np
 # All 9 corruption types in the LOO study
 ALL_TYPES = [
     "fingerprint", "glare", "rain", "gaussian_noise", "jpeg",
-    "motion_blur", "defocus_blur", "fog", "low_light",
+    "motion_blur", "defocus_blur", "dust_camera", "low_light",
 ]
 
 CATEGORIES = {
@@ -44,7 +44,7 @@ CATEGORIES = {
     "defocus_blur": "Optical",
     "motion_blur": "Blur",
     "gaussian_noise": "Sensor",
-    "fog": "Atmospheric",
+    "dust_camera": "Environmental",
     "low_light": "Illumination",
     "jpeg": "Digital",
 }

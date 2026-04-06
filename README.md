@@ -40,7 +40,7 @@ Of the 5 corruption types that cause policy failures, the monitor achieves **mea
 | Optical | Defocus blur | 1 | ImageNet-C |
 | Blur | Motion blur | 2 | ImageNet-C |
 | Sensor | Gaussian noise | 2 | ImageNet-C |
-| Atmospheric | Fog / haze | 2 | ImageNet-C |
+| Environmental | Dust / mud | 4 | camera_occlusion |
 | Illumination | Low-light | 2 | LIBERO-Plus |
 | Digital | JPEG compression | 1 | ImageNet-C |
 

@@ -69,6 +69,9 @@ def make_occlusion_model(
     elif occlusion_type == "fog":
         from adversarial_dust.digital_corruption import FogModel
         return FogModel(budget_level=budget_level, image_shape=image_shape)
+    elif occlusion_type == "dust_camera":
+        from adversarial_dust.dust_camera_model import DustCameraModel
+        return DustCameraModel(budget_level=budget_level, image_shape=image_shape)
     elif occlusion_type == "low_light":
         from adversarial_dust.digital_corruption import LowLightModel
         return LowLightModel(budget_level=budget_level, image_shape=image_shape)
