@@ -98,93 +98,151 @@ def record_episodes(config, policy, image_shape, corruption_type, budget,
     return episodes
 
 
-def make_episode_gif(episodes, output_path, label, fps=5, frame_size=(220, 176)):
-    """Create GIF showing all episodes with green/red borders.
+def make_episode_animation(episodes, output_dir, name, label,
+                            fps=5, frame_size=(420, 336)):
+    """Create GIF + MP4 playing episodes sequentially with a running counter.
 
-    Green border appears at the actual timestep the can is lifted
-    (from env success signal), not at a fixed fraction.
-    Red border appears at episode end for failures.
+    Each episode plays one at a time. A running "X / Y successes" counter
+    updates after each episode resolves. Green border + "LIFTED" at the
+    actual success step; red border + "FAIL" at episode end.
     """
     pw, ph = frame_size
-    n_eps = len(episodes)
-    gap = 2
-    border_t = 4
-    label_h = 24
-
-    # Layout: episodes side by side (max 5 per row)
-    cols = min(5, n_eps)
-    rows = (n_eps + cols - 1) // cols
-    col_w = pw + border_t * 2
-    row_h = ph + border_t * 2 + label_h
-    total_w = cols * col_w + (cols - 1) * gap
-    total_h = rows * row_h + (rows - 1) * gap + 30  # 30 for title
-
-    # Find max frames across episodes
-    max_frames = max(len(frames) for _, frames, _ in episodes)
-    stride = max(1, max_frames // 40)
-    frame_indices = list(range(0, max_frames, stride))
+    border_t = 5
+    header_h = 40
+    counter_h = 36
+    total_w = pw + border_t * 2
+    total_h = header_h + ph + border_t * 2 + counter_h
 
     GREEN = "#2e7d32"
     RED = "#c62828"
+    GRAY = "#37474f"
 
-    gif_frames = []
-    for fi in frame_indices:
-        canvas = Image.new("RGB", (total_w, total_h), "#1a1a2e")
-        draw = ImageDraw.Draw(canvas)
+    n_eps = len(episodes)
+    frames_per_ep = 30  # subsample each episode to this many frames
+    hold_result = 8     # hold frames after each episode resolves
 
-        # Title
-        font = get_font(13)
-        sr = sum(1 for s, _, _ in episodes if s) / n_eps
-        title = f"{label} — {sr:.0%} success rate"
-        draw.text((8, 6), title, fill="white", font=font)
+    all_frames = []
+    successes_so_far = 0
 
-        for ep_idx, (success, frames, success_step) in enumerate(episodes):
-            r, c = divmod(ep_idx, cols)
-            x0 = c * (col_w + gap)
-            y0 = r * (row_h + gap) + 30
+    for ep_idx, (success, ep_frames, success_step) in enumerate(episodes):
+        n_raw = len(ep_frames)
+        stride = max(1, n_raw // frames_per_ep)
+        sampled_indices = list(range(0, n_raw, stride))[:frames_per_ep]
 
-            # Get frame (clamp to episode length)
-            src_i = min(fi, len(frames) - 1)
-            frame_np = frames[src_i]
+        # Map success_step to sampled frame index
+        if success and success_step > 0:
+            success_frame_idx = success_step // stride
+        else:
+            success_frame_idx = -1
+
+        resolved = False
+        for si, raw_idx in enumerate(sampled_indices):
+            canvas = Image.new("RGB", (total_w, total_h), "#1a1a2e")
+            draw = ImageDraw.Draw(canvas)
+
+            # Header: condition label + episode number
+            font = get_font(14)
+            draw.text((8, 8), label, fill="white", font=font)
+            small_font = get_font(11)
+            ep_text = f"Episode {ep_idx + 1}/{n_eps}"
+            bbox = draw.textbbox((0, 0), ep_text, font=small_font)
+            draw.text((total_w - (bbox[2] - bbox[0]) - 10, 12),
+                      ep_text, fill="#9e9e9e", font=small_font)
+
+            # Episode frame
+            frame_np = ep_frames[raw_idx]
             panel = Image.fromarray(frame_np).resize((pw, ph), Image.LANCZOS)
 
-            ep_label = f"Ep {ep_idx+1}"
-            color = GREEN if success else RED
-
-            # Green border at actual success step, red at episode end
-            if success and success_step > 0 and fi >= success_step:
-                panel = add_border(panel, color, border_t)
+            # Border + label based on actual success step
+            if success and success_frame_idx >= 0 and si >= success_frame_idx:
+                panel = add_border(panel, GREEN, border_t)
                 panel = add_label(panel, "LIFTED", GREEN)
-            elif not success and fi >= max_frames - 5:
-                panel = add_border(panel, color, border_t)
+                if not resolved:
+                    successes_so_far += 1
+                    resolved = True
+            elif not success and si >= len(sampled_indices) - 3:
+                panel = add_border(panel, RED, border_t)
                 panel = add_label(panel, "FAIL", RED)
+                resolved = True
             else:
-                panel = add_border(panel, "#37474f", border_t)
+                panel = add_border(panel, GRAY, border_t)
 
-            canvas.paste(panel, (x0, y0 + label_h))
+            canvas.paste(panel, (0, header_h))
 
-            # Episode number label
-            is_active = (success and success_step > 0 and fi >= success_step) or \
-                        (not success and fi >= max_frames - 5)
-            ep_color = color if is_active else "#9e9e9e"
-            draw_canvas = ImageDraw.Draw(canvas)
-            small_font = get_font(10)
-            draw_canvas.text((x0 + 4, y0 + 4), ep_label, fill=ep_color,
-                             font=small_font)
+            # Running counter at bottom
+            completed = ep_idx if not resolved else ep_idx + 1
+            attempts = ep_idx + 1
+            counter_text = f"{successes_so_far} / {attempts} successes"
+            counter_font = get_font(13)
+            bbox = draw.textbbox((0, 0), counter_text, font=counter_font)
+            cx = (total_w - (bbox[2] - bbox[0])) // 2
+            cy = header_h + ph + border_t * 2 + 8
+            # Color the counter based on success rate so far
+            if attempts > 0:
+                rate = successes_so_far / attempts
+                if rate >= 0.8:
+                    counter_color = "#66bb6a"
+                elif rate >= 0.5:
+                    counter_color = "#ffa726"
+                else:
+                    counter_color = "#ef5350"
+            else:
+                counter_color = "#9e9e9e"
+            draw.text((cx, cy), counter_text, fill=counter_color,
+                      font=counter_font)
 
-        gif_frames.append(canvas)
+            all_frames.append(canvas)
 
-    # Hold last frame
-    for _ in range(10):
-        gif_frames.append(gif_frames[-1])
+        # Hold the final frame of each episode (shows result)
+        if not resolved:
+            # Episode ended without explicit success/fail — count as fail
+            resolved = True
+        for _ in range(hold_result):
+            all_frames.append(all_frames[-1])
+
+    # Hold final summary for longer
+    for _ in range(20):
+        all_frames.append(all_frames[-1])
 
     # Save GIF
-    gif_frames[0].save(
-        str(output_path), save_all=True, append_images=gif_frames[1:],
-        duration=200, loop=0, optimize=True)
-    size_kb = output_path.stat().st_size / 1024
-    print(f"  Saved GIF: {output_path} ({size_kb:.0f} KB, "
-          f"{len(gif_frames)} frames)", flush=True)
+    gif_path = output_dir / f"{name}.gif"
+    all_frames[0].save(
+        str(gif_path), save_all=True, append_images=all_frames[1:],
+        duration=int(1000 / fps), loop=0, optimize=True)
+    size_kb = gif_path.stat().st_size / 1024
+    print(f"  Saved GIF: {gif_path} ({size_kb:.0f} KB, "
+          f"{len(all_frames)} frames)", flush=True)
+
+    # Save MP4
+    mp4_path = output_dir / f"{name}.mp4"
+    try:
+        import imageio
+        writer = imageio.get_writer(str(mp4_path), fps=fps,
+                                     codec="libx264", quality=8)
+        for frame in all_frames:
+            writer.append_data(np.array(frame))
+        writer.close()
+        size_kb = mp4_path.stat().st_size / 1024
+        print(f"  Saved MP4: {mp4_path} ({size_kb:.0f} KB)", flush=True)
+    except Exception as e:
+        # Fall back to saving frames as individual PNGs if imageio fails
+        print(f"  MP4 save failed ({e}), trying ffmpeg...", flush=True)
+        import tempfile, subprocess
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for i, frame in enumerate(all_frames):
+                frame.save(f"{tmpdir}/f_{i:05d}.png")
+            subprocess.run([
+                "ffmpeg", "-y", "-framerate", str(fps),
+                "-i", f"{tmpdir}/f_%05d.png",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                str(mp4_path)
+            ], capture_output=True)
+        if mp4_path.exists():
+            size_kb = mp4_path.stat().st_size / 1024
+            print(f"  Saved MP4 (ffmpeg): {mp4_path} ({size_kb:.0f} KB)",
+                  flush=True)
+        else:
+            print(f"  MP4 failed", flush=True)
 
 
 def main():
@@ -230,11 +288,11 @@ def main():
             "budget": args.budget if ctype != "clean" else None,
         }
 
-        # Save GIF
+        # Save GIF + MP4
         label = ctype.replace("_", " ").title()
         if ctype != "clean":
             label += f" ({args.budget:.0%})"
-        make_episode_gif(episodes, out / f"{ctype}.gif", label)
+        make_episode_animation(episodes, out, ctype, label)
 
         # Save sample frame from middle of first episode
         first_frames = episodes[0][1]
