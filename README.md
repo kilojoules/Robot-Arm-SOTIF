@@ -22,14 +22,14 @@ We test 9 corruption types spanning 6 physical mechanisms, following the [ImageN
 
 | Category | Corruption | Source | Causes failures? |
 |---|---|---|:---:|
-| Lens contact | Fingerprint smudge | Gu et al., SIGGRAPH Asia 2009 | Yes |
+| Lens contact | Fingerprint smudge | Gu et al., SIGGRAPH Asia 2009 | Yes (high budget) |
 | Lens contact | Rain drops | camera_occlusion | Yes |
 | Optical | Glare / lens flare | Physically-inspired | No |
-| Optical | Defocus blur | ImageNet-C | Yes |
-| Blur | Motion blur | ImageNet-C | Yes |
+| Optical | Defocus blur | ImageNet-C | Yes (high budget) |
+| Blur | Motion blur | ImageNet-C | Yes (high budget) |
 | Sensor | Gaussian noise | ImageNet-C | No |
-| Environmental | Dust / mud | camera_occlusion | TBD |
-| Illumination | Low-light | LIBERO-Plus | Yes |
+| Environmental | Dust / mud | camera_occlusion | No |
+| Illumination | Low-light | LIBERO-Plus | Yes (high budget) |
 | Digital | JPEG compression | ImageNet-C | No |
 
 Each corruption is parameterized with a **budget level** (0-100%) controlling severity. At each budget, we sample random corruption parameters and run episodes to measure success rate.
