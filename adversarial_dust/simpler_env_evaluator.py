@@ -53,6 +53,7 @@ class SimplerEnvEvaluator(PolicyEvaluator):
         truncated = False
         step_count = 0
         success = False
+        success_step = -1
         clean_frames: List[np.ndarray] = []
         dirty_frames: List[np.ndarray] = []
 
@@ -91,6 +92,9 @@ class SimplerEnvEvaluator(PolicyEvaluator):
                 self.policy.reset(instruction)
 
             if "success" in info and info["success"]:
+                if not success:
+                    success_step = step_count
                 success = True
 
+        self.last_success_step = success_step
         return success, clean_frames, dirty_frames

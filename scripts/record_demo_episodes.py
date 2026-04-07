@@ -87,17 +87,24 @@ def record_episodes(config, policy, image_shape, corruption_type, budget,
             params = model.get_random_params(rng)
         t0 = time.time()
         success, _, dirty_frames = evaluator.run_episode(params, record=True)
+        success_step = getattr(evaluator, "last_success_step", -1)
         elapsed = time.time() - t0
-        episodes.append((success, dirty_frames))
+        episodes.append((success, dirty_frames, success_step))
+        step_info = f", lifted at step {success_step}" if success_step > 0 else ""
         print(f"    ep {ep+1}/{n_episodes}: "
               f"{'SUCCESS' if success else 'FAIL'} ({elapsed:.1f}s, "
-              f"{len(dirty_frames)} frames)", flush=True)
+              f"{len(dirty_frames)} frames{step_info})", flush=True)
 
     return episodes
 
 
 def make_episode_gif(episodes, output_path, label, fps=5, frame_size=(220, 176)):
-    """Create GIF showing all episodes with green/red borders."""
+    """Create GIF showing all episodes with green/red borders.
+
+    Green border appears at the actual timestep the can is lifted
+    (from env success signal), not at a fixed fraction.
+    Red border appears at episode end for failures.
+    """
     pw, ph = frame_size
     n_eps = len(episodes)
     gap = 2
@@ -113,7 +120,7 @@ def make_episode_gif(episodes, output_path, label, fps=5, frame_size=(220, 176))
     total_h = rows * row_h + (rows - 1) * gap + 30  # 30 for title
 
     # Find max frames across episodes
-    max_frames = max(len(frames) for _, frames in episodes)
+    max_frames = max(len(frames) for _, frames, _ in episodes)
     stride = max(1, max_frames // 40)
     frame_indices = list(range(0, max_frames, stride))
 
@@ -127,11 +134,11 @@ def make_episode_gif(episodes, output_path, label, fps=5, frame_size=(220, 176))
 
         # Title
         font = get_font(13)
-        sr = sum(1 for s, _ in episodes if s) / n_eps
+        sr = sum(1 for s, _, _ in episodes if s) / n_eps
         title = f"{label} — {sr:.0%} success rate"
         draw.text((8, 6), title, fill="white", font=font)
 
-        for ep_idx, (success, frames) in enumerate(episodes):
+        for ep_idx, (success, frames, success_step) in enumerate(episodes):
             r, c = divmod(ep_idx, cols)
             x0 = c * (col_w + gap)
             y0 = r * (row_h + gap) + 30
@@ -141,29 +148,29 @@ def make_episode_gif(episodes, output_path, label, fps=5, frame_size=(220, 176))
             frame_np = frames[src_i]
             panel = Image.fromarray(frame_np).resize((pw, ph), Image.LANCZOS)
 
-            # Episode label
             ep_label = f"Ep {ep_idx+1}"
-            frac = fi / max(max_frames - 1, 1)
             color = GREEN if success else RED
 
-            # Add border (solid after halfway for success, after 85% for fail)
-            if success and frac > 0.4:
+            # Green border at actual success step, red at episode end
+            if success and success_step > 0 and fi >= success_step:
                 panel = add_border(panel, color, border_t)
-                panel = add_label(panel, "SUCCESS", GREEN)
-            elif not success and frac > 0.85:
+                panel = add_label(panel, "LIFTED", GREEN)
+            elif not success and fi >= max_frames - 5:
                 panel = add_border(panel, color, border_t)
                 panel = add_label(panel, "FAIL", RED)
             else:
                 panel = add_border(panel, "#37474f", border_t)
 
-            # Paste panel
             canvas.paste(panel, (x0, y0 + label_h))
 
             # Episode number label
-            ep_color = color if (success and frac > 0.4) or (not success and frac > 0.85) else "#9e9e9e"
+            is_active = (success and success_step > 0 and fi >= success_step) or \
+                        (not success and fi >= max_frames - 5)
+            ep_color = color if is_active else "#9e9e9e"
             draw_canvas = ImageDraw.Draw(canvas)
             small_font = get_font(10)
-            draw_canvas.text((x0 + 4, y0 + 4), ep_label, fill=ep_color, font=small_font)
+            draw_canvas.text((x0 + 4, y0 + 4), ep_label, fill=ep_color,
+                             font=small_font)
 
         gif_frames.append(canvas)
 
@@ -216,7 +223,7 @@ def main():
             config, policy, image_shape, ctype, args.budget,
             args.episodes, rng)
 
-        sr = sum(1 for s, _ in episodes if s) / len(episodes)
+        sr = sum(1 for s, _, _ in episodes if s) / len(episodes)
         summary[ctype] = {
             "success_rate": sr,
             "n_episodes": len(episodes),
@@ -230,9 +237,10 @@ def main():
         make_episode_gif(episodes, out / f"{ctype}.gif", label)
 
         # Save sample frame from middle of first episode
-        mid = len(episodes[0][1]) // 2
+        first_frames = episodes[0][1]
+        mid = len(first_frames) // 2
         cv2.imwrite(str(out / f"{ctype}_sample.png"),
-                    cv2.cvtColor(episodes[0][1][mid], cv2.COLOR_RGB2BGR))
+                    cv2.cvtColor(first_frames[mid], cv2.COLOR_RGB2BGR))
 
     # Save summary
     with open(out / "summary.json", "w") as f:
