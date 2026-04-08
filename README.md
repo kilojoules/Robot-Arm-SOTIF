@@ -66,7 +66,11 @@ When trained and evaluated on the **same** corruption types, the predictor accur
 
 The critical question: **can the predictor generalize to corruption types it has never seen?**
 
-We run a leave-one-out (LOO) analysis: for each of the 9 corruption types, hold it out entirely, train on the other 8, and evaluate on the held-out type.
+We run a leave-one-out (LOO) analysis: for each of the 9 corruption types, hold it out entirely, train on the other 8, and evaluate on the held-out type. We measure two things:
+
+- **Spearman ρ (severity ranking):** We run episodes at 5 budget levels (10%, 30%, 50%, 70%, 90%) and ask: does the monitor's mean predicted P(failure) increase monotonically with corruption severity? Spearman ρ is the rank correlation between budget level and predicted failure probability. ρ = 1.0 means the monitor perfectly ranks "more corruption = more danger" even for a corruption type it has never seen. ρ = 0 means no relationship. ρ < 0 means the monitor gets it backwards. The p-value tests whether the correlation is statistically significant (p < 0.05).
+
+- **AUROC (episode-level classification):** Across all episodes at all budgets, can the monitor distinguish episodes that will fail from those that will succeed? AUROC = 1.0 means perfect separation. AUROC = 0.5 means random guessing.
 
 <p align="center">
   <img src="docs/figures/loo_results.png" alt="LOO cross-corruption generalization results" width="900">
