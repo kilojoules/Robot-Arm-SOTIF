@@ -2,7 +2,7 @@
 
 **Can a lightweight visual safety monitor predict when camera corruption will cause a robot to fail — even for corruption types it has never seen?**
 
-[Paper (RA-L, in preparation)]() | [Results](results/loo_analysis_v3/loo_summary.json)
+<!--  [Results](results/loo_analysis_v3/loo_summary.json) --!>
 
 ---
 
