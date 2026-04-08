@@ -2,7 +2,6 @@
 
 **Can a lightweight visual safety monitor predict when camera corruption will cause a robot to fail — even for corruption types it has never seen?**
 
-<!--  [Results](results/loo_analysis_v3/loo_summary.json) --!>
 
 ---
 
@@ -118,6 +117,8 @@ PYTHONPATH=/root/InternVLA-M1:/root/project:/root/camera_occlusion \
   --eval-episodes 10 \
   --episodes-per-condition 10 \
   --output-dir results/loo_analysis
+
+[Latest LOO Results](results/loo_analysis_v3/loo_summary.json)
 
 # Record demo animations
 python scripts/record_demo_episodes.py \
