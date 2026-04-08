@@ -1,0 +1,64 @@
+# Safe Operating Envelope via Isaac Sim GPU-parallel evaluation
+#
+# Uses ray-traced rendering with Warp-kernel lens contamination
+# for physically-accurate adversarial occlusion patterns.
+#
+# Run with:
+#   python -m adversarial_dust.run_envelope --config configs/envelope_isaac_sim.yaml
+
+env:
+  task_name: "widowx_put_eggplant_in_basket"
+  policy_model: "internvla-m1"
+  max_episode_steps: 200
+  sim_backend: "isaac_sim"
+  internvla_m1_port: 10093
+  internvla_m1_ckpt: ""
+
+isaac_sim:
+  num_envs: 8
+  renderer: "ray_traced"
+  lens_model: "pinhole"
+  gpu_id: 0
+  headless: true
+  shader_occlusion: true
+  physics_dt: 0.008333  # 1/120
+  rendering_dt: 0.033333  # 1/30
+
+envelope:
+  occlusion_types:
+    - fingerprint
+    - glare
+  budget_levels:
+    - 0.01
+    - 0.05
+    - 0.10
+    - 0.20
+    - 0.30
+  episodes_per_eval: 5
+  episodes_final_eval: 25
+  population_size: 20
+  max_generations: 50
+  sigma0: 0.2
+  seed: 42
+  n_random_baselines: 5
+  safe_threshold: 0.95
+  marginal_threshold: 0.70
+
+fingerprint:
+  num_prints: 3
+  max_opacity: 0.5
+  smudge_color: [200, 190, 170]
+  dirty_threshold: 0.05
+  scale_range: [0.05, 0.25]
+  freq_range: [3.0, 15.0]
+
+glare:
+  max_intensity: 0.8
+  num_streaks: 6
+  chromatic_aberration: 1.5
+  ghost_count: 4
+  ghost_spacing: 0.4
+  ghost_decay: 0.85
+  dirty_threshold: 0.05
+
+output_dir: "results/envelope_isaac_sim"

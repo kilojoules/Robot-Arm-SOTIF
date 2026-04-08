@@ -1,0 +1,6 @@
+We want to use this https://simpler-env.github.io/
+
+simulating camera errors like here https://github.com/kilojoules/cnn-occlusion-robustness https://github.com/kilojoules/camera_occlusion
+
+to create an adversarial camera dirt model, where we measure the worst-case performance reduction different amounts of maximum allowable dust in the camera view can degrade the performance of an agent trained in a clean environment
+

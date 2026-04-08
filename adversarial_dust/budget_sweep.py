@@ -11,7 +11,8 @@ from adversarial_dust.dust_model import AdversarialDustModel
 from adversarial_dust.blob_model import DynamicBlobDustModel
 from adversarial_dust.fingerprint_model import FingerprintSmudgeModel
 from adversarial_dust.glare_model import AdversarialGlareModel
-from adversarial_dust.evaluator import PolicyEvaluator
+from adversarial_dust.evaluator import PolicyEvaluator  # ABC
+from adversarial_dust.simpler_env_evaluator import SimplerEnvEvaluator
 from adversarial_dust.optimizer import AdversarialDustOptimizer
 
 logger = logging.getLogger(__name__)
@@ -41,8 +42,8 @@ class BudgetSweep:
     def _make_dust_model(self, budget_level: float):
         return make_dust_model(self.config, self.image_shape, budget_level)
 
-    def _make_evaluator(self, dust_model: AdversarialDustModel) -> PolicyEvaluator:
-        return PolicyEvaluator(self.config.env, self.policy, dust_model)
+    def _make_evaluator(self, dust_model) -> PolicyEvaluator:
+        return SimplerEnvEvaluator(self.config.env, self.policy, dust_model)
 
     def _evaluate_clean_baseline(self) -> float:
         """Evaluate policy with no dust."""

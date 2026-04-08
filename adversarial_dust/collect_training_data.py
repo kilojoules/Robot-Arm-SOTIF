@@ -23,7 +23,7 @@ import numpy as np
 
 from adversarial_dust.config import load_envelope_config
 from adversarial_dust.envelope_predictor import make_occlusion_model
-from adversarial_dust.evaluator import PolicyEvaluator
+from adversarial_dust.simpler_env_evaluator import SimplerEnvEvaluator
 
 
 def _load_adversarial_params(results_dir: str, occlusion_type: str) -> dict:
@@ -141,7 +141,7 @@ def collect_episodes(
                   flush=True)
 
             model = make_occlusion_model(occ_type, config, image_shape, budget)
-            evaluator = PolicyEvaluator(config.env, policy, model)
+            evaluator = SimplerEnvEvaluator(config.env, policy, model)
             rng = np.random.default_rng(42 + condition_idx)
 
             ep_idx = 0
@@ -165,7 +165,7 @@ def collect_episodes(
     print(f"\n[clean baseline] {n_clean} episodes", flush=True)
     from adversarial_dust.dust_model import AdversarialDustModel
     clean_model = AdversarialDustModel(config.dust, image_shape, budget_level=0.0)
-    evaluator = PolicyEvaluator(config.env, policy, clean_model)
+    evaluator = SimplerEnvEvaluator(config.env, policy, clean_model)
 
     for ep in range(n_clean):
         t0 = time.time()

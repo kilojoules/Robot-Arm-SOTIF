@@ -22,12 +22,13 @@ import cv2
 import numpy as np
 
 from adversarial_dust.config import FingerprintConfig
+from adversarial_dust.occlusion_model import ContaminationMode, OcclusionModel
 
 # Parameters per fingerprint: cx, cy, angle, scale, ridge_freq, ridge_amp, opacity, smear_angle
 PARAMS_PER_PRINT = 8
 
 
-class FingerprintSmudgeModel:
+class FingerprintSmudgeModel(OcclusionModel):
     """Physics-based fingerprint smudge on a camera lens.
 
     Each fingerprint has 8 optimizable parameters:

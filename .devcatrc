@@ -1,0 +1,58 @@
+exclude = [
+    # directories
+    "data",
+    "images",
+    "results/",
+    "notes",
+    "wandb/",
+    "__pycache__/",
+    "portfolio",
+
+    # 3D assets / mesh data
+    "*.obj",
+    "*.urdf",
+    "*.ply",
+    "*.stl",
+
+    # model weights / serialized data
+    "*.pt",
+    "*.h5",
+    "*.ckpt",
+    "*.trt",
+    "*.pkl",
+    "*.npz",
+    "*.npy",
+    "*.nc",
+    "*.dat",
+    "*.pyc",
+
+    # images / media
+    "*.jpg",
+    "*.jpeg",
+    "*.png",
+    "*.gif",
+    "*.mp4",
+    "*.svg",
+    "*.pdf",
+
+    # tabular / structured data
+    "*.csv",
+    "*.geojson",
+    "*.json",
+    "*.grd",
+
+    # archives / notebooks / locks
+    "*.zip",
+    "*.ipynb",
+    "pixi.lock",
+
+    # logs
+    "*.log",
+
+    # non-script text
+    "LICENSE",
+    "README.md",
+
+    # misc
+    "GTSRB*"
+]

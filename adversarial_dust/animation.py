@@ -8,7 +8,8 @@ import cv2
 import numpy as np
 
 from adversarial_dust.config import ExperimentConfig
-from adversarial_dust.evaluator import PolicyEvaluator
+from adversarial_dust.evaluator import PolicyEvaluator  # ABC
+from adversarial_dust.simpler_env_evaluator import SimplerEnvEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +215,7 @@ def record_all_budget_animations(
 
     # Record clean episode first
     dust_model_clean = make_dust_model(config, image_shape, budget_level=0.0)
-    evaluator_clean = PolicyEvaluator(config.env, policy, dust_model_clean)
+    evaluator_clean = SimplerEnvEvaluator(config.env, policy, dust_model_clean)
     record_fn = record_episode_gif if fmt == "gif" else record_episode_video
     record_fn(evaluator_clean, None, str(out / f"clean.{fmt}"), budget_label="none")
 
@@ -223,7 +224,7 @@ def record_all_budget_animations(
         budget = float(budget_str)
         params = np.array(br["adversarial_params"])
         dust_model = make_dust_model(config, image_shape, budget)
-        evaluator = PolicyEvaluator(config.env, policy, dust_model)
+        evaluator = SimplerEnvEvaluator(config.env, policy, dust_model)
         record_fn(
             evaluator,
             params,

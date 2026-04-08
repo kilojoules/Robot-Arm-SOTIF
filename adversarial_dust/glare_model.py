@@ -4,12 +4,13 @@ import cv2
 import numpy as np
 
 from adversarial_dust.config import GlareConfig
+from adversarial_dust.occlusion_model import ContaminationMode, OcclusionModel
 
 # Parameters: source_x, source_y, intensity, streak_angle_offset, haze_spread, num_streaks_weight
 NUM_GLARE_PARAMS = 6
 
 
-class AdversarialGlareModel:
+class AdversarialGlareModel(OcclusionModel):
     """Parametric camera glare for adversarial optimization.
 
     Generates physically-inspired lens flare effects:

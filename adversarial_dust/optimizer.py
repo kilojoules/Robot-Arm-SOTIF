@@ -8,7 +8,7 @@ import cma
 import numpy as np
 
 from adversarial_dust.config import OptimizationConfig
-from adversarial_dust.evaluator import PolicyEvaluator
+from adversarial_dust.evaluator import PolicyEvaluator  # ABC
 
 logger = logging.getLogger(__name__)
 
@@ -66,11 +66,12 @@ class AdversarialDustOptimizer:
         while not es.stop():
             candidates = es.ask()
 
-            # Evaluate each candidate (minimizing success rate)
-            fitness_values = []
-            for candidate in candidates:
-                sr = self._evaluate_candidate(np.array(candidate))
-                fitness_values.append(sr)
+            # Evaluate candidates (batch_evaluate enables GPU parallelism
+            # when using IsaacBatchEvaluator; falls back to sequential otherwise)
+            fitness_values = self.evaluator.batch_evaluate(
+                [np.array(c) for c in candidates],
+                self.opt_config.episodes_per_eval,
+            )
 
             es.tell(candidates, fitness_values)
 

@@ -4,9 +4,10 @@ import cv2
 import numpy as np
 
 from adversarial_dust.config import DustGridConfig
+from adversarial_dust.occlusion_model import ContaminationMode, OcclusionModel
 
 
-class AdversarialDustModel:
+class AdversarialDustModel(OcclusionModel):
     """Parameterizes camera dust as a low-resolution opacity grid.
 
     The grid is upsampled via bicubic interpolation and Gaussian-blurred

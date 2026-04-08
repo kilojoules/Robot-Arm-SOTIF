@@ -4,12 +4,13 @@ import cv2
 import numpy as np
 
 from adversarial_dust.config import BlobConfig
+from adversarial_dust.occlusion_model import ContaminationMode, OcclusionModel
 
 # Number of CMA-ES parameters per blob
 PARAMS_PER_BLOB = 8  # cx, cy, sigma_x, sigma_y, opacity, vx, vy, growth_rate
 
 
-class DynamicBlobDustModel:
+class DynamicBlobDustModel(OcclusionModel):
     """Parameterizes camera dust as a set of moving, growing Gaussian blobs.
 
     Each blob has 8 optimizable parameters:

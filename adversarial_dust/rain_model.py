@@ -10,6 +10,8 @@ fingerprint + glare, then tested on rain to measure generalization.
 
 import numpy as np
 
+from adversarial_dust.occlusion_model import ContaminationMode, OcclusionModel
+
 _Rain = None
 
 
@@ -30,7 +32,7 @@ _IDX_BLUR = 4         # blur kernel size [3, 15]
 NUM_RAIN_PARAMS = 5
 
 
-class RainOcclusionModel:
+class RainOcclusionModel(OcclusionModel):
     """Adapter for camera_occlusion Rain effect.
 
     Maps a flat parameter vector + budget level to Rain constructor args.
@@ -96,6 +98,14 @@ class RainOcclusionModel:
         coverage = kwargs["num_drops"] / self.max_drops
         return np.full((self.image_h, self.image_w), coverage, dtype=np.float32)
 
+    def compute_coverage(self, alpha_mask: np.ndarray) -> float:
+        """Fraction of pixels with opacity above a nominal threshold."""
+        return float(np.mean(alpha_mask > 0.05))
+
     def get_cma_bounds(self):
         """Return (lower, upper) bound arrays for CMA-ES."""
         return self.lower_bounds.copy(), self.upper_bounds.copy()
+
+    def get_cma_x0(self) -> np.ndarray:
+        """Return a reasonable initial point for CMA-ES."""
+        return (self.lower_bounds + self.upper_bounds) / 2.0
