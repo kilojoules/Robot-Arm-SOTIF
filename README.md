@@ -8,13 +8,7 @@
 
 ## The Task
 
-A vision-language-action model ([InternVLA-M1](https://github.com/OpenGVLab/InternVLA)) picks up a coke can from a table in simulation ([SimplerEnv](https://github.com/simpler-env/SimplerEnv) / SAPIEN). The coke can starts at a **random position** each episode. Under clean conditions, the policy achieves 100% success rate (50/50 episodes).
-
-<p align="center">
-  <img src="docs/figures/demo_clean.gif" alt="10 clean episodes — 100% success" width="440">
-</p>
-
-The question: what happens when the camera lens is dirty, wet, or otherwise degraded?
+A vision-language-action model ([InternVLA-M1](https://github.com/OpenGVLab/InternVLA)) picks up a coke can from a table in simulation ([SimplerEnv](https://github.com/simpler-env/SimplerEnv) / SAPIEN). The coke can starts at a **random position** each episode. Under clean conditions, the policy achieves 100% success rate (50/50 episodes). What happens when the camera lens is dirty, wet, or otherwise degraded?
 
 ## Camera Corruption Types
 
@@ -38,19 +32,16 @@ We test 9 corruption types spanning 6 physical mechanisms, following the [ImageN
 
 Each corruption has a **budget level** (0–100%) controlling severity. Budgets are tuned per type to target the regime where failures occur — some corruption types require higher severity to impact the policy.
 
-Here is rain at 50% budget — the policy fails 40% of the time. Each animation shows 10 real episodes where the policy sees the corrupted frames, with a real-time P(failure) prediction from the safety monitor and a running success counter:
+Each animation below shows 10 real episodes where the policy sees the corrupted frames, with a real-time P(failure) gauge from the safety monitor and a running success counter. The P(failure) predictions come from a model trained **without** the displayed corruption type — fully out-of-distribution.
 
-<p align="center">
-  <img src="docs/figures/demo_rain.gif" alt="10 rain episodes at 50% budget — 60% success" width="440">
-</p>
+| | | | | |
+|:---:|:---:|:---:|:---:|:---:|
+| ![Clean](docs/figures/demo_clean.gif) | ![Fingerprint](docs/figures/demo_fingerprint.gif) | ![Rain](docs/figures/demo_rain.gif) | ![Glare](docs/figures/demo_glare.gif) | ![Defocus Blur](docs/figures/demo_defocus_blur.gif) |
+| **Clean** (100%) | **Fingerprint** 90% (100%) | **Rain** 50% (60%) | **Glare** 90% (100%) | **Defocus Blur** 90% (60%) |
+| ![Motion Blur](docs/figures/demo_motion_blur.gif) | ![Gaussian Noise](docs/figures/demo_gaussian_noise.gif) | ![Dust/Mud](docs/figures/demo_dust_camera.gif) | ![Low-Light](docs/figures/demo_low_light.gif) | ![JPEG](docs/figures/demo_jpeg.gif) |
+| **Motion Blur** 90% (80%) | **Gauss. Noise** 90% (100%) | **Dust/Mud** 90% (80%) | **Low-Light** 90% (80%) | **JPEG** 90% (100%) |
 
-And defocus blur at 90% budget:
-
-<p align="center">
-  <img src="docs/figures/demo_defocus_blur.gif" alt="10 defocus blur episodes at 90% budget — 60% success" width="440">
-</p>
-
-> The P(failure) gauge shows predictions from a model trained **without** the displayed corruption type — fully out-of-distribution. [All 10 animations available as GIF + MP4.](results/demo_episodes_v2/)
+> Format: **Type** budget (success rate). [All animations also available as MP4.](results/demo_episodes_v2/)
 
 ## Safety Predictor
 
