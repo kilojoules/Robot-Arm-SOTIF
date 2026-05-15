@@ -4,6 +4,9 @@
 # Tested 2026-03-13 — the ONLY combo that actually works.
 set -e
 
+# NVIDIA repo signing key fetch (2026-04 onward the stock key is stale on this image)
+apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub > /dev/null 2>&1 || true
+
 echo "=== System dependencies ==="
 apt-get update -qq
 apt-get install -y -qq git wget libgl1-mesa-glx libglib2.0-0 ffmpeg cmake build-essential tmux > /dev/null 2>&1
@@ -51,11 +54,10 @@ echo "=== InternVLA-M1 ==="
 cd /root
 [ ! -d InternVLA-M1 ] && git clone https://github.com/InternRobotics/InternVLA-M1
 
-echo "=== CUDA toolkit for flash-attn build ==="
-conda install -y -c nvidia cuda-toolkit=12.4 2>&1 | tail -3
-
-echo "=== flash-attn ==="
-pip install flash-attn==2.7.3 --no-build-isolation 2>&1 | tail -1
+# Skip flash-attn (and the heavy cuda-toolkit conda install it requires).
+# Empirically (vast.ai attempt 5, Apr 23) InternVLA-M1 runs fine without it,
+# and the conda solver + flash-attn build OOMs hosts with <128GB RAM.
+echo "=== flash-attn skipped ==="
 
 echo "=== Python deps ==="
 pip install "transformers==4.52.3" dacite pyyaml cma matplotlib imageio \

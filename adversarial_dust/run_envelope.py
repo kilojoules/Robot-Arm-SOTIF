@@ -89,8 +89,20 @@ def create_policy(config: EnvelopeExperimentConfig):
         )
 
 
+# Module-level keepalive: on headless containers, closing the first sapien env
+# before later simpler_env.make() calls (after torch CUDA context init via
+# create_policy) causes SIGSEGV in svulkan2. Stashing the first env keeps
+# Vulkan state alive for subsequent envs.
+_SAPIEN_KEEPALIVE = None
+
+
 def get_image_shape(config: EnvelopeExperimentConfig) -> tuple:
-    """Get image shape from environment by doing a quick reset."""
+    """Get image shape from environment by doing a quick reset.
+
+    Keeps a reference to the env alive at module scope so Vulkan state
+    survives subsequent env recreations (see _SAPIEN_KEEPALIVE comment).
+    """
+    global _SAPIEN_KEEPALIVE
     import simpler_env
     from simpler_env.utils.env.observation_utils import (
         get_image_from_maniskill2_obs_dict,
@@ -103,7 +115,7 @@ def get_image_shape(config: EnvelopeExperimentConfig) -> tuple:
     obs, _ = env.reset()
     image = get_image_from_maniskill2_obs_dict(env, obs)
     shape = image.shape
-    env.close()
+    _SAPIEN_KEEPALIVE = env  # do not close: keeps Vulkan context alive
     return shape
 
 

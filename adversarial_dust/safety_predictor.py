@@ -47,6 +47,7 @@ class SafetyPredictorCNN:
         freeze_backbone: bool = True,
         head_hidden: int = 64,
         dropout: float = 0.3,
+        pretrained: bool = True,
     ):
         _ensure_torch()
         self.image_size = image_size
@@ -54,11 +55,13 @@ class SafetyPredictorCNN:
         self.freeze_backbone = freeze_backbone
         self.head_hidden = head_hidden
         self.dropout = dropout
+        self.pretrained = pretrained
         self.model = _make_safety_net(
             backbone=backbone,
             freeze_backbone=freeze_backbone,
             head_hidden=head_hidden,
             dropout=dropout,
+            pretrained=pretrained,
         )
         self.device = "cpu"
 
@@ -107,6 +110,7 @@ class SafetyPredictorCNN:
             "freeze_backbone": self.freeze_backbone,
             "head_hidden": self.head_hidden,
             "dropout": self.dropout,
+            "pretrained": self.pretrained,
         }, path)
         logger.info(f"Saved safety predictor to {path}")
 
@@ -120,11 +124,13 @@ class SafetyPredictorCNN:
             self.freeze_backbone = ckpt.get("freeze_backbone", True)
             self.head_hidden = ckpt.get("head_hidden", 64)
             self.dropout = ckpt.get("dropout", 0.3)
+            self.pretrained = ckpt.get("pretrained", True)
             self.model = _make_safety_net(
                 backbone=self.backbone,
                 freeze_backbone=self.freeze_backbone,
                 head_hidden=self.head_hidden,
                 dropout=self.dropout,
+                pretrained=self.pretrained,
             )
         self.model.load_state_dict(ckpt["model_state"])
         self.model = self.model.to(self.device)
@@ -136,6 +142,7 @@ def _make_safety_net(
     freeze_backbone: bool = True,
     head_hidden: int = 64,
     dropout: float = 0.3,
+    pretrained: bool = True,
 ):
     """Build a pretrained backbone + trainable classification head.
 
@@ -147,6 +154,8 @@ def _make_safety_net(
         freeze_backbone: If True, freeze all backbone weights.
         head_hidden: Hidden layer size in classification head.
         dropout: Dropout rate in classification head.
+        pretrained: If False, initialize the backbone from scratch (no
+            ImageNet weights). Used for the from-scratch ablation.
     """
     _ensure_torch()
     from torchvision import models
@@ -157,15 +166,18 @@ def _make_safety_net(
             super().__init__()
 
             if backbone == "resnet18":
-                base = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+                weights = models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
+                base = models.resnet18(weights=weights)
                 feat_dim = base.fc.in_features  # 512
                 base.fc = _nn.Identity()
             elif backbone == "resnet50":
-                base = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V1)
+                weights = models.ResNet50_Weights.IMAGENET1K_V1 if pretrained else None
+                base = models.resnet50(weights=weights)
                 feat_dim = base.fc.in_features  # 2048
                 base.fc = _nn.Identity()
             elif backbone == "vit_b_16":
-                base = models.vit_b_16(weights=models.ViT_B_16_Weights.IMAGENET1K_V1)
+                weights = models.ViT_B_16_Weights.IMAGENET1K_V1 if pretrained else None
+                base = models.vit_b_16(weights=weights)
                 feat_dim = base.heads.head.in_features  # 768
                 base.heads = _nn.Identity()
             else:
@@ -207,6 +219,7 @@ def train_safety_predictor(
     backbone_lr: float = None,
     seed: int = 42,
     data_fraction: float = 1.0,
+    pretrained: bool = True,
 ) -> SafetyPredictorCNN:
     """Train the safety predictor on collected episode data.
 
@@ -264,6 +277,7 @@ def train_safety_predictor(
         freeze_backbone=freeze_backbone,
         head_hidden=head_hidden,
         dropout=dropout,
+        pretrained=pretrained,
     )
     tensors = _torch.stack([predictor.preprocess(img) for img in images_raw])
     label_tensor = _torch.from_numpy(labels).float().unsqueeze(1)

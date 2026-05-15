@@ -131,6 +131,7 @@ def stage_train(output_dir, args):
         backbone_lr=args.backbone_lr,
         seed=args.seed,
         data_fraction=args.data_fraction,
+        pretrained=not args.from_scratch,
     )
 
     return predictor
@@ -413,6 +414,9 @@ def main():
                         help="Separate LR for unfrozen backbone (default: lr/10)")
     parser.add_argument("--data-fraction", type=float, default=1.0,
                         help="Fraction of training data to use (learning curve ablation)")
+    parser.add_argument("--from-scratch", action="store_true",
+                        help="Initialize backbone from scratch (no ImageNet "
+                             "weights). For from-scratch ablation.")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for training")
 
@@ -671,6 +675,8 @@ def run_loo(config, policy, image_shape, output_dir, args):
                 dropout=args.dropout,
                 backbone_lr=args.backbone_lr,
                 seed=args.seed,
+                data_fraction=args.data_fraction,
+                pretrained=not args.from_scratch,
             )
         else:
             predictor = SafetyPredictorCNN()
@@ -813,6 +819,7 @@ def run_diversity_curve(config, policy, image_shape, output_dir, args):
                 backbone=args.backbone,
                 freeze_backbone=args.freeze_backbone,
                 seed=args.seed + sub_idx,
+                pretrained=not args.from_scratch,
             )
 
             # Evaluate on held-out types
