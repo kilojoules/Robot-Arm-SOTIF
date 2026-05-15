@@ -1,0 +1,74 @@
+[
+  {
+    "task_id": "widowx_put_cooked_shrimp_in_golden_chalice",
+    "object_name": "cooked_shrimp",
+    "object_urdf": "/root/generative_tasks/urdf_assets/objects/cooked_shrimp/cooked_shrimp.urdf",
+    "container_name": "golden_chalice",
+    "container_urdf": "/root/generative_tasks/urdf_assets/containers/golden_chalice/golden_chalice.urdf",
+    "language_instruction": "put the cooked shrimp in the golden chalice",
+    "object_initial_pos": [
+      0.0,
+      0.0,
+      0.05
+    ],
+    "container_pos": [
+      0.15,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "task_id": "widowx_put_cooked_shrimp_in_small_metal_bucket",
+    "object_name": "cooked_shrimp",
+    "object_urdf": "/root/generative_tasks/urdf_assets/objects/cooked_shrimp/cooked_shrimp.urdf",
+    "container_name": "small_metal_bucket",
+    "container_urdf": "/root/generative_tasks/urdf_assets/containers/small_metal_bucket/small_metal_bucket.urdf",
+    "language_instruction": "put the cooked shrimp in the small metal bucket",
+    "object_initial_pos": [
+      0.0,
+      0.0,
+      0.05
+    ],
+    "container_pos": [
+      0.15,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "task_id": "widowx_put_scoop_of_ice_cream_in_a_waffle_cone_in_golden_chalice",
+    "object_name": "scoop_of_ice_cream_in_a_waffle_cone",
+    "object_urdf": "/root/generative_tasks/urdf_assets/objects/scoop_of_ice_cream_in_a_waffle_cone/scoop_of_ice_cream_in_a_waffle_cone.urdf",
+    "container_name": "golden_chalice",
+    "container_urdf": "/root/generative_tasks/urdf_assets/containers/golden_chalice/golden_chalice.urdf",
+    "language_instruction": "put the scoop of ice cream in a waffle cone in the golden chalice",
+    "object_initial_pos": [
+      0.0,
+      0.0,
+      0.05
+    ],
+    "container_pos": [
+      0.15,
+      0.0,
+      0.0
+    ]
+  },
+  {
+    "task_id": "widowx_put_scoop_of_ice_cream_in_a_waffle_cone_in_small_metal_bucket",
+    "object_name": "scoop_of_ice_cream_in_a_waffle_cone",
+    "object_urdf": "/root/generative_tasks/urdf_assets/objects/scoop_of_ice_cream_in_a_waffle_cone/scoop_of_ice_cream_in_a_waffle_cone.urdf",
+    "container_name": "small_metal_bucket",
+    "container_urdf": "/root/generative_tasks/urdf_assets/containers/small_metal_bucket/small_metal_bucket.urdf",
+    "language_instruction": "put the scoop of ice cream in a waffle cone in the small metal bucket",
+    "object_initial_pos": [
+      0.0,
+      0.0,
+      0.05
+    ],
+    "container_pos": [
+      0.15,
+      0.0,
+      0.0
+    ]
+  }
+]

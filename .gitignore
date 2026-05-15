@@ -8,6 +8,11 @@ results/
 data/
 *.npz
 
+# Generative-task pipeline outputs (regenerable by run_pipeline.py)
+generative_tasks/assets/
+generative_tasks/urdf_assets/
+generative_tasks/animations/
+
 # Python
 __pycache__/
 *.pyc

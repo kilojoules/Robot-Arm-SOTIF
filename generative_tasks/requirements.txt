@@ -1,0 +1,5 @@
+shap-e @ git+https://github.com/openai/shap-e.git
+trimesh
+numpy
+torch
+Pillow
