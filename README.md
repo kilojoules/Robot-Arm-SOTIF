@@ -5,6 +5,25 @@
 
 ---
 
+## Quickstart
+
+The fastest way to explore this study is the [tutorial notebook](notebooks/tutorial.ipynb), which walks through the task, the corruption taxonomy, the safety monitor, leave-one-out results, and the OOD-predictability finding using artifacts already in `results/`. No GPU or simulator needed.
+
+```bash
+# 1. Install pixi (https://pixi.sh) — one-time, no admin needed
+curl -fsSL https://pixi.sh/install.sh | bash
+
+# 2. From the repo root, enter the environment (installs deps on first run)
+pixi shell
+
+# 3. Launch Jupyter and open notebooks/tutorial.ipynb
+jupyter notebook notebooks/tutorial.ipynb
+```
+
+To re-run the full simulation pipeline (policy rollouts, training, evaluation) see [Reproducing Results](#reproducing-results) below.
+
+---
+
 ## The Task
 
 A vision-language-action model ([InternVLA-M1](https://github.com/OpenGVLab/InternVLA)) picks up a coke can from a table in simulation ([SimplerEnv](https://github.com/simpler-env/SimplerEnv) / SAPIEN). The coke can starts at a **random position** each episode. Under clean conditions, the policy achieves 100% success rate (50/50 episodes). What happens when the camera lens is dirty, wet, or otherwise degraded?
