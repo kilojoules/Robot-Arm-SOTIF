@@ -116,7 +116,7 @@ We develop the mapping formally in \cref{sec:sotif}.
 
 Consider a vision-based manipulation policy $\pi$ that maps camera observations $o_t \in \mathbb{R}^{H \times W \times 3}$ to actions $a_t$.
 An occlusion model $\mathcal{O}_\theta: \mathbb{R}^{H \times W \times 3} \to \mathbb{R}^{H \times W \times 3}$ parameterized by $\theta \in \Theta$ degrades the observation at each timestep: $\tilde{o}_t = \mathcal{O}_\theta(o_t, t)$.
-A budget function $b(\theta) \in [0, 1]$ measures the fraction of pixels significantly affected by the occlusion.
+A budget function $b(\theta) \in [0, 1]$ quantifies occlusion severity: for spatially-localized corruptions it measures the fraction of pixels significantly affected by the occlusion, while for global corruptions it acts as a normalized cap on the corruption intensity (\cref{sec:budget_constraint}).
 
 \noindent\textbf{Safe Operating Envelope.}
 For a given occlusion type $\mathcal{O}$ and budget level $\beta$, we seek the worst-case success rate:
@@ -187,10 +187,11 @@ Following ImageNet-C~\cite{hendrycks2019} and LIBERO-Plus~\cite{liberoplus}, we 
 \textbf{low-light} (gamma darkening with amplified sensor read noise, simulating reduced photon count).
 
 \subsection{Budget Constraint}
+\label{sec:budget_constraint}
 
 All models enforce a budget level $\beta$ controlling corruption severity.
-For spatially-localized models (fingerprint, rain), budget is the fraction of pixels above a dirty threshold, enforced via binary search.
-For global models (fog, low-light, blur), budget linearly scales the corruption intensity parameter.
+For spatially-localized models (fingerprint, glare), budget is the fraction of pixels above a dirty threshold, enforced via a binary-search projection step.
+For global models (rain, noise, JPEG, motion and defocus blur, low-light, lens dust), budget acts as a multiplicative cap on the corruption intensity parameter.
 This enables fair comparison across corruption types at matched severity levels.
 
 \begin{figure}[t]
@@ -274,13 +275,14 @@ To systematically evaluate cross-corruption generalization, we employ a leave-on
 In each fold $k$, one corruption type $\mathcal{O}_k$ is held out.
 The safety monitor is trained on episodes collected from the remaining eight types and evaluated on the held-out type.
 
-For each held-out type and budget level, we run $N$ evaluation episodes and compute:
+For each held-out type we sweep five budget levels $\beta \in \{0.1, 0.3, 0.5, 0.7, 0.9\}$, running $N$ evaluation episodes per level, and compute:
 \begin{itemize}
-    \item The Spearman rank correlation $\rho$ between budget level and mean predicted $\hat{p}_{\text{fail}}$ (severity ranking quality).
+    \item The Spearman rank correlation $\rho$ between the empirical failure rate (one minus the measured episode success rate) and the mean predicted $\hat{p}_{\text{fail}}$, taken across the five budget levels (severity ranking quality). Budget indexes the five conditions being correlated; it is not itself one of the correlated variables.
     \item The episode-level AUROC for binary failure prediction (discriminative power).
     \item The Expected Calibration Error (ECE) from reliability diagrams.
 \end{itemize}
 Bootstrapped 95\% confidence intervals (1000 resamples) are reported for all metrics.
+Note that the per-fold $\rho$ is computed over only $n=5$ condition points (the five budget levels), whereas AUROC is computed over all $n=50$ episodes in the fold; AUROC is therefore the statistically stronger of the two metrics.
 
 \noindent\textbf{Corruption diversity curve.}
 We additionally vary the training set size $|\mathcal{O}_{\text{train}}| \in \{2, 4, 6, 8\}$ by randomly sampling subsets and evaluating on the remaining types.
