@@ -106,7 +106,31 @@ We run a leave-one-out (LOO) analysis: for each of the 9 corruption types, hold 
 
 **Result:** On the 6 corruption types that cause failures, the monitor achieves **mean Spearman ρ = 0.793 ± 0.118** for severity ranking and **mean AUROC = 0.922 ± 0.129** for episode-level failure classification — even though the held-out corruption was never seen during training.
 
-For comparison, a CNN trained from scratch (no ImageNet pretraining) achieves ρ = -0.62 on held-out rain — **anti-correlated**. The frozen pretrained backbone is the key.
+### Frozen vs. fine-tuned vs. from-scratch (controlled comparison)
+
+Why freeze the backbone? We ran a controlled, simulator-free comparison: the **same ResNet-18 + head**, the **same 9 corruption families**, the same leave-one-corruption-out protocol and metrics — training the backbone three ways (frozen / end-to-end fine-tuned / from-scratch) under identical data, folds, and seeds, swept over training-set size. We also measure *feature drift* by re-attaching the original ImageNet classifier to each trained backbone and evaluating its retained ImageNet skill.
+
+<p align="center">
+  <img src="docs/figures/causal_crossover.png" alt="Frozen vs fine-tuned vs scratch: AUROC and ImageNet drift vs training data" width="900">
+</p>
+
+Held-out corruption AUROC (mean ± std over 3 seeds):
+
+| n_train | frozen | fine-tuned | from-scratch | fine-tuned: retained ImageNet AUC |
+|---:|:---:|:---:|:---:|:---:|
+| 30   | 0.713 ± 0.004 | 0.702 ± 0.013 | 0.604 ± 0.029 | 0.975 |
+| 100  | 0.723 ± 0.002 | 0.761 ± 0.016 | 0.569 ± 0.035 | 0.765 |
+| 300  | 0.736 ± 0.005 | 0.814 ± 0.007 | 0.651 ± 0.010 | 0.624 |
+| 1000 | 0.731 ± 0.002 | 0.888 ± 0.008 | 0.690 ± 0.022 | 0.538 |
+
+*(frozen retains ImageNet AUC ≈ 0.997 at every size; from-scratch ≈ 0.50 = chance; pretrained baseline = 0.998.)*
+
+**Takeaways:**
+- **Pretraining is essential.** From-scratch is worst at every data size, and its backbone stays ≈ random (retained ImageNet AUC ≈ chance) — it never learns transferable features at these scales.
+- **Freezing wins in the low-data regime.** Fine-tuning's advantage grows monotonically with data (fine-tuned − frozen AUROC: −0.011 → +0.157 over n = 30 → 1000; crossover ≈ n 50–100). In the scarce-data regime typical of safety-monitor training, frozen matches or beats fine-tuning.
+- **Fine-tuning forgets.** Its retained ImageNet AUC collapses (0.975 → 0.538) as it specializes to the training corruptions, while frozen preserves the general representation (0.997). The robot monitor above (frozen, scarce data, ρ = 0.79) sits where this curve predicts.
+
+*This is a corruption-detection proxy on natural images (STL-10), decoupled from the robot sim because SAPIEN 2.2.2 no longer renders on current GPU drivers; full data, scripts, and writeup in [`results/causal_proxy/`](results/causal_proxy/).*
 
 ## Reproducing Results
 
