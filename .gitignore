@@ -8,6 +8,15 @@ results/
 data/
 *.npz
 
+# LaTeX build artifacts and submission bundles (main.tex is tracked; outputs are not)
+paper/main.aux
+paper/main.bbl
+paper/main.blg
+paper/main.log
+paper/main.out
+paper/main.pdf
+paper.zip
+
 # Generative-task pipeline outputs (regenerable by run_pipeline.py)
 generative_tasks/assets/
 generative_tasks/urdf_assets/

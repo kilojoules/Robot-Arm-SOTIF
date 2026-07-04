@@ -1,3 +1,9 @@
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+.instance_key
+.instance_id
+.active_instance
+.idle_count
+.bad_count
+.diag_addr
